@@ -13,9 +13,13 @@
 #include <QComboBox>
 #include "MouseAction.h"
 
+// Geometry Verification & Validation
+#include "../src/plugins/vv/ui/VVDockWidget.h"
+#include "../src/plugins/vv/ui/VVWidget.h"
+#include <QTimer>
+#include <QStringList>
 
 class Document;
-
 
 class MainWindow : public QMainWindow
 {
@@ -25,9 +29,10 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    Document* getActiveDocument();
+    Document *getActiveDocument();
 
-    QStatusBar *getStatusBar() const {
+    QStatusBar *getStatusBar() const
+    {
         return statusBar;
     }
 
@@ -39,7 +44,17 @@ private:
     Dockable *objectPropertiesDockable;
     Dockable *consoleDockable;
     Dockable *toolboxDockable;
+    // Geometry Verification & Validation
+    Dockable *vvDockable;
     QStatusBar *statusBar;
+    VVWidget *vvWidget;
+    QTimer *vvTimer;
+    QStringList vvValidationQueue;
+    bool vvRunning;
+    int vvCurrentIndex;
+    QStringList vvTests;
+    QMap<QString, QStringList> vvSuites;
+
     QTabWidget *documentArea;
     QLabel *statusBarPathLabel;
     MouseAction *m_mouseAction;
@@ -64,7 +79,7 @@ private:
     QAction *raytraceAct;
 
     // Stores pointers to all the currently opened documents. Item removed when document is closed. Key is documents ID.
-    std::unordered_map<int, Document*> documents;
+    std::unordered_map<int, Document *> documents;
 
     // Total number of documents ever opened in application's life time. This is not decreased when closing documents.
     // A document's ID is set to documentsCount at the moment of opening it.
@@ -73,34 +88,37 @@ private:
     // The ID of the active document.
     int activeDocumentId = -1;
 
-    void prepareUi();
-    void loadTheme();
-    void setIcons();
-    void prepareDockables();
-
-    bool saveFile(const QString& filePath);
-    bool maybeSave(int documentId, bool *cancel = nullptr);
+    // Geometry Verification & Validation
+    void startVVValidation();
+    void processVVValidation();
+    void stopVVValidation();
+    bool saveFile(const QString &filePath);
+    bool maybeSave(int documentId, bool *cancelvoid prepareUi();
+                   void loadTheme();
+                   void setIcons();
+                   void prepareDockables();
+                   = nullptr);
 
     QAction *themeAct[2];
-	
+
 protected:
-    void closeEvent(QCloseEvent* event) override;
-	
+    void closeEvent(QCloseEvent *event) override;
+
     void moveCameraButtonAction();
     void selectObjectButtonAction();
 
 public slots:
     void openFileDialog();
-    bool saveFileId(const QString& filePath, int documentId);
+    bool saveFileId(const QString &filePath, int documentId);
     void saveAsFileDialog();
     bool saveAsFileDialogId(int documentId);
     void saveFileDefaultPath();
     bool saveFileDefaultPathId(int documentId);
     void onActiveDocumentChanged(int newIndex);
-    void tabCloseRequested(int i) ;
+    void tabCloseRequested(int i);
     void objectTreeWidgetSelectionChanged(size_t objectId);
     void newFile(); // empty new file
-    void openFile(const QString& filePath);
+    void openFile(const QString &filePath);
     void updateMouseButtonObjectState();
 };
 #endif // MAINWINDOW_H

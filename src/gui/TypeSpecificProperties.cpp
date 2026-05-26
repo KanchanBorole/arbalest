@@ -1,3 +1,4 @@
+
 /*              T Y P E S P E C I F I C P R O P E R T I E S . C P P
  * BRL-CAD
  *
@@ -78,7 +79,7 @@ TypeSpecificProperties::TypeSpecificProperties(Document* document, BRLCAD::Objec
         colorHolder->setStyleSheet("margin-top:11px;");
         hasColorCheck->setText("Has Color");
         hasColorCheck->setCheckState(comb->HasColor() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
-        connect(hasColorCheck, &QCheckBox::checkStateChanged, [this, item](Qt::CheckState newState) {
+        connect(hasColorCheck, &QCheckBox::stateChanged, [this, item](int newState) {
             this->document->getBRLCADObject(item->getPath(), [newState](BRLCAD::Object &object) {
                 if (newState == Qt::CheckState::Checked)
                     dynamic_cast<BRLCAD::Combination&>(object).SetHasColor(true);
