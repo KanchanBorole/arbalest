@@ -92,12 +92,13 @@ private:
     void startVVValidation();
     void processVVValidation();
     void stopVVValidation();
+
+    void prepareUi();
+    void loadTheme();
+    void setIcons();
+    void prepareDockables();
     bool saveFile(const QString &filePath);
-    bool maybeSave(int documentId, bool *cancelvoid prepareUi();
-                   void loadTheme();
-                   void setIcons();
-                   void prepareDockables();
-                   = nullptr);
+    bool maybeSave(int documentId, bool *cancel = nullptr);
 
     QAction *themeAct[2];
 
