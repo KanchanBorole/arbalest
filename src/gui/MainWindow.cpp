@@ -1583,6 +1583,7 @@ void MainWindow::startVVValidation()
     }
 
     QStringList selectedTests = dialog.getSelectedTests();
+    vvTests = selectedTests;
     vvWidget->appendConsoleMessage("[INFO] Selected Tests:");
 
     for (const QString &test : selectedTests)
@@ -1680,59 +1681,73 @@ void MainWindow::processVVValidation()
     QString trimmedName = objectName.trimmed();
 
     // Empty name
-    if (trimmedName.isEmpty())
+    if (vvTests.contains("No Invalid Names"))
     {
-        vvWidget->addIssue(
-            "ERROR",
-            "Geometry has empty/invalid name");
+        if (trimmedName.isEmpty())
+        {
+            vvWidget->addIssue(
+                "ERROR",
+                "Geometry has empty/invalid name");
 
-        vvWidget->appendConsoleMessage(
-            "[ERROR] Empty geometry name detected");
+            vvWidget->appendConsoleMessage(
+                "[ERROR] Empty geometry name detected");
 
-        return;
+            errorCount++;
+            vvCurrentIndex++;
+            return;
+        }
     }
     // Duplicate name
-    if (vvCurrentIndex == 0)
+    if (vvTests.contains("Duplicate Geometry Names"))
     {
-        validatedNames.clear();
-    }
+        if (vvCurrentIndex == 0)
+        {
+            validatedNames.clear();
+        }
 
-    if (validatedNames.contains(trimmedName))
-    {
-        vvWidget->addIssue(
-            "ERROR",
-            "Duplicate geometry name detected: " + trimmedName);
-        errorCount++;
+        if (validatedNames.contains(trimmedName))
+        {
+            vvWidget->addIssue(
+                "ERROR",
+                "Duplicate geometry name detected: " + trimmedName);
+            errorCount++;
 
-        vvWidget->appendConsoleMessage("[ERROR] Duplicate geometry detected");
-    }
-    else
-    {
-        validatedNames.insert(trimmedName);
+            vvWidget->appendConsoleMessage("[ERROR] Duplicate geometry detected");
+        }
+        else
+        {
+            validatedNames.insert(trimmedName);
+        }
     }
     // Spaces warning
-    if (trimmedName.contains(" "))
+    if (vvTests.contains("No Invalid Names"))
     {
-        vvWidget->addIssue(
-            "WARNING",
-            "Geometry name contains spaces: " + trimmedName);
-        warningCount++;
+        if (trimmedName.contains(" "))
+        {
+            vvWidget->addIssue(
+                "WARNING",
+                "Geometry name contains spaces: " + trimmedName);
+            warningCount++;
 
-        vvWidget->appendConsoleMessage("[WARNING] Geometry name contains spaces");
+            vvWidget->appendConsoleMessage("[WARNING] Geometry name contains spaces");
+        }
     }
     // Temporary geometry
-    if (trimmedName.contains(
-            "temp",
-            Qt::CaseInsensitive))
+    if (vvTests.contains("Temporary Geometry Check"))
     {
-        vvWidget->addIssue(
-            "WARNING",
-            "Temporary Geometry Test",
-            "Temporary geometry found: ",
-            trimmedName, "/all/" + trimmedName);
-        warningCount++;
+        if (trimmedName.contains(
+                "temp",
+                Qt::CaseInsensitive))
+        {
+            vvWidget->addIssue(
+                "WARNING",
+                "Temporary Geometry Test",
+                "Temporary geometry found: ",
+                trimmedName, "/all/" + trimmedName);
+            warningCount++;
 
-        vvWidget->appendConsoleMessage("[WARNING] Temporary geometry detected");
+            vvWidget->appendConsoleMessage("[WARNING] Temporary geometry detected");
+        }
     }
 
     vvWidget->appendConsoleMessage(
@@ -1741,14 +1756,6 @@ void MainWindow::processVVValidation()
     vvWidget->addIssue(
         "INFO",
         "Validated geometry: " + objectName);
-
-    if (objectName.contains("temp"))
-    {
-        vvWidget->addIssue(
-            "WARNING",
-            "Temporary geometry found: " + objectName);
-        warningCount++;
-    }
     vvCurrentIndex++;
 }
 
