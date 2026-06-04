@@ -128,6 +128,9 @@ void VVWidget::clearIssues()
 {
     issueTree->clear();
     objectGroups.clear();
+    consoleOutput->clear();
+    summaryLabel->setText("Errors: 0 | Warnings: 0 | Passed: 0");
+    setValidationStatus("Validation idle");
 }
 void VVWidget::appendConsoleMessage(const QString &message)
 {

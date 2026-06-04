@@ -1474,6 +1474,19 @@ void MainWindow::tabCloseRequested(const int i)
     {
         delete documents[documentId];
         documents.erase(documentId);
+        if (vvWidget)
+        {
+            vvWidget->clearIssues();
+
+            vvValidationQueue.clear();
+            vvCurrentIndex = 0;
+            vvRunning = false;
+
+            vvTimer->stop();
+
+            vvWidget->setValidationStatus("Validation idle");
+            vvWidget->updateSummary(0, 0, 0);
+        }
     }
     if (documentArea->currentIndex() == -1)
     {
@@ -1584,6 +1597,17 @@ void MainWindow::startVVValidation()
 
     QStringList selectedTests = dialog.getSelectedTests();
     vvTests = selectedTests;
+    if (selectedTests.isEmpty())
+    {
+        vvWidget->appendConsoleMessage(
+            "[WARNING] No validation tests selected.");
+
+        vvWidget->addIssue(
+            "WARNING",
+            "No validation tests selected");
+
+        return;
+    }
     vvWidget->appendConsoleMessage("[INFO] Selected Tests:");
 
     for (const QString &test : selectedTests)
