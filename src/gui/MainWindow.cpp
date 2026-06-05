@@ -78,17 +78,17 @@ void MainWindow::loadTheme() {
 
     QStringList themes = {":themes/arbalest_light.theme", ":themes/arbalest_dark.theme"};
 
-    QFile themeFile(themes[themeIndex]);
-    themeFile.open(QFile::ReadOnly);
-    QString themeStr(themeFile.readAll());
-    Globals::theme = new QSSPreprocessor(themeStr);
-    themeFile.close();
+	QFile themeFile(themes[themeIndex]);
+	themeFile.open(QFile::ReadOnly);
+	QString themeStr(themeFile.readAll());
+	Globals::theme = new QSSPreprocessor(themeStr);
+	themeFile.close();
 
-    QFile styleFile(":styles/arbalest_simple.qss");
-    styleFile.open(QFile::ReadOnly);
-    QString styleStr(styleFile.readAll());
-    qApp->setStyleSheet(Globals::theme->process(styleStr));
-    styleFile.close();
+	QFile styleFile(":styles/arbalest_simple.qss");
+	styleFile.open(QFile::ReadOnly);
+	QString styleStr(styleFile.readAll());
+	qApp->setStyleSheet(Globals::theme->process(styleStr));
+	styleFile.close();
 }
 
 void MainWindow::prepareUi() {
@@ -755,7 +755,7 @@ void MainWindow::prepareUi() {
         documents[activeDocumentId]->getViewport()->getCamera()->centerView(objectId);
     });
     viewMenu->addAction(centerViewAct);
-
+    
     viewMenu->addSeparator();
 
     currentViewport = new QComboBox();
@@ -764,7 +764,7 @@ void MainWindow::prepareUi() {
 
     QActionGroup *viewportMenuGroup = new QActionGroup(this);
     for(int i=0;i<4;i++) {
-        singleViewAct[i] = new QAction("Viewport " + QString::number(i + 1), this);
+        singleViewAct[i] = new QAction("Viewport " + QString::number(i+1), this);
         viewportMenuGroup->addAction(singleViewAct[i]);
         singleViewAct[i]->setCheckable(true);
         singleViewAct[i]->setStatusTip("Viewport viewport " + QString::number(i+1));
@@ -1008,7 +1008,8 @@ void MainWindow::prepareUi() {
     raytraceButton->setDefaultAction(raytraceAct);
     raytraceButton->setObjectName("toolbarButton");
     mainTabBarCornerWidget->addWidget(raytraceButton);
-
+    
+    documentArea->setCornerWidget(mainTabBarCornerWidget,Qt::Corner::TopRightCorner);
     mainTabBarCornerWidget->addWidget(toolbarSeparator(false));
     // vv
     QAction *runVVToolbarAct = new QAction("Run V&V", this);
@@ -1287,7 +1288,7 @@ bool MainWindow::saveFileId(const QString& filePath, int documentId) {
 
 void MainWindow::openFileDialog() 
 {
-    const QString filePath = QFileDialog::getOpenFileName(documentArea, tr("Open BRL-CAD database"), QString(), "BRL-CAD Database (*.g)");
+	const QString filePath = QFileDialog::getOpenFileName(documentArea, tr("Open BRL-CAD database"), QString(), "BRL-CAD Database (*.g)");
     if (!filePath.isEmpty()){
         openFile(filePath);
     }
@@ -1295,7 +1296,7 @@ void MainWindow::openFileDialog()
 
 void MainWindow::saveAsFileDialog() {
     if (activeDocumentId == -1) return;
-    const QString filePath = QFileDialog::getSaveFileName(this, tr("Save BRL-CAD database"), QString(), "BRL-CAD Database (*.g)");
+	const QString filePath = QFileDialog::getSaveFileName(this, tr("Save BRL-CAD database"), QString(), "BRL-CAD Database (*.g)");
     if (!filePath.isEmpty()) {
         if (saveFile(filePath)) 
         {
@@ -1406,7 +1407,7 @@ void MainWindow::onActiveDocumentChanged(const int newIndex){
                 for(QAction * action:singleViewAct) action->setChecked(false);
             }else {
                 currentViewport->setCurrentIndex(documents[activeDocumentId]->getViewportGrid()->getActiveViewportId());
-                for (QAction * action:singleViewAct) action->setChecked(false);
+                for(QAction * action:singleViewAct) action->setChecked(false);
                 singleViewAct[documents[activeDocumentId]->getViewportGrid()->getActiveViewportId()]->setChecked(true);
             }
         }
@@ -1422,7 +1423,7 @@ void MainWindow::onActiveDocumentChanged(const int newIndex){
 void MainWindow::tabCloseRequested(const int i)
 {
     int documentId = -1;
-    ViewportGrid* displayGrid = dynamic_cast<ViewportGrid *>(documentArea->widget(i));
+    ViewportGrid* displayGrid = dynamic_cast<ViewportGrid*>(documentArea->widget(i));
     
     if (displayGrid != nullptr) {
         documentId = displayGrid->getDocument()->getDocumentId();

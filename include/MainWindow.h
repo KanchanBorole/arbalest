@@ -102,10 +102,10 @@ private:
     bool maybeSave(int documentId, bool *cancel = nullptr);
 
     QAction *themeAct[2];
-    
+	
 protected:
     void closeEvent(QCloseEvent* event) override;
-    
+	  
     void moveCameraButtonAction();
     void selectObjectButtonAction();
 
