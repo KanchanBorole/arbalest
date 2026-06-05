@@ -105,7 +105,7 @@ private:
 	
 protected:
     void closeEvent(QCloseEvent* event) override;
-	  
+  
     void moveCameraButtonAction();
     void selectObjectButtonAction();
 

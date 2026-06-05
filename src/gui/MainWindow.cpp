@@ -1008,7 +1008,7 @@ void MainWindow::prepareUi() {
     raytraceButton->setDefaultAction(raytraceAct);
     raytraceButton->setObjectName("toolbarButton");
     mainTabBarCornerWidget->addWidget(raytraceButton);
-    
+
     documentArea->setCornerWidget(mainTabBarCornerWidget,Qt::Corner::TopRightCorner);
     mainTabBarCornerWidget->addWidget(toolbarSeparator(false));
     // vv
