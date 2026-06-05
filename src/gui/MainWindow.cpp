@@ -66,8 +66,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_mouseAction{nul
 }
 
 MainWindow::~MainWindow() {
-    for (const std::pair<const int, Document *> &pair : documents) {
-        Document *document = pair.second;
+    for (const std::pair<const int, Document*>& pair : documents) {
+        Document* document = pair.second;
         delete document;
     }
 }
@@ -94,7 +94,7 @@ void MainWindow::loadTheme() {
 void MainWindow::prepareUi() {
     setWindowTitle("Arbalest");
     setWindowIcon(QIcon(":/icons/arbalest_icon.png"));
-
+    
 
     // ---------- Menu bar ----------
     menuTitleBar = new QMenuBar(this);
@@ -126,21 +126,21 @@ void MainWindow::prepareUi() {
     saveAsAct->setStatusTip(tr("Save database as"));
     connect(saveAsAct, &QAction::triggered, this, &MainWindow::saveAsFileDialog);
     fileMenu->addAction(saveAsAct);
-
+    
     fileMenu->addSeparator();
 
     quitAct = new QAction(tr("Quit"), this);
     quitAct->setShortcut(QKeySequence(tr("Ctrl+Q")));
     quitAct->setStatusTip(tr("Quit"));
-    connect(quitAct, &QAction::triggered, this, [this]() { 
-        QCoreApplication::quit(); 
+    connect(quitAct, &QAction::triggered, this, [this]() {
+        QCoreApplication::quit();
     });
     fileMenu->addAction(quitAct);
 
     // Create menu
     QMenu* createMenu = menuTitleBar->addMenu(tr("&Create"));
 
-    QAction *createArb8Act = new QAction(tr("Arb8"), this);
+    QAction* createArb8Act = new QAction(tr("Arb8"), this);
     connect(createArb8Act, &QAction::triggered, this, [this]() {
         if (activeDocumentId == -1) return;
         QString name;
@@ -180,7 +180,7 @@ void MainWindow::prepareUi() {
         if (!getObjectNameFromUser(this, *documents[activeDocumentId], name)) return;
         BRLCAD::EllipticalTorus * object = new BRLCAD::EllipticalTorus();
         object->SetName(name.toUtf8());
-        documents[activeDocumentId]->AddObject(*object, true); 
+        documents[activeDocumentId]->AddObject(*object, true);
     });
     createMenu->addAction(createEllipticalTorusAct);
 
@@ -191,7 +191,7 @@ void MainWindow::prepareUi() {
         if (!getObjectNameFromUser(this, *documents[activeDocumentId], name)) return;
         BRLCAD::Halfspace * object = new BRLCAD::Halfspace();
         object->SetName(name.toUtf8());
-        documents[activeDocumentId]->AddObject(*object, true); 
+        documents[activeDocumentId]->AddObject(*object, true);
     });
     createMenu->addAction(createHalfspaceAct);
 
@@ -202,7 +202,7 @@ void MainWindow::prepareUi() {
         if (!getObjectNameFromUser(this, *documents[activeDocumentId], name)) return;
         BRLCAD::HyperbolicCylinder * object = new BRLCAD::HyperbolicCylinder();
         object->SetName(name.toUtf8());
-        documents[activeDocumentId]->AddObject(*object, true); 
+        documents[activeDocumentId]->AddObject(*object, true);
     });
     createMenu->addAction(createHyperbolicCylinderAct);
 
@@ -213,7 +213,7 @@ void MainWindow::prepareUi() {
         if (!getObjectNameFromUser(this, *documents[activeDocumentId], name)) return;
         BRLCAD::Hyperboloid * object = new BRLCAD::Hyperboloid();
         object->SetName(name.toUtf8());
-        documents[activeDocumentId]->AddObject(*object, true); 
+        documents[activeDocumentId]->AddObject(*object, true);
     });
     createMenu->addAction(createHyperboloidAct);
 
@@ -224,7 +224,7 @@ void MainWindow::prepareUi() {
         if (!getObjectNameFromUser(this, *documents[activeDocumentId], name)) return;
         BRLCAD::ParabolicCylinder * object = new BRLCAD::ParabolicCylinder();
         object->SetName(name.toUtf8());
-        documents[activeDocumentId]->AddObject(*object, true); 
+        documents[activeDocumentId]->AddObject(*object, true);
     });
     createMenu->addAction(createParabolicCylinderAct);
 
@@ -235,7 +235,7 @@ void MainWindow::prepareUi() {
         if (!getObjectNameFromUser(this, *documents[activeDocumentId], name)) return;
         BRLCAD::Paraboloid * object = new BRLCAD::Paraboloid();
         object->SetName(name.toUtf8());
-        documents[activeDocumentId]->AddObject(*object, true); 
+        documents[activeDocumentId]->AddObject(*object, true);
     });
     createMenu->addAction(createParaboloidAct);
 
@@ -246,7 +246,7 @@ void MainWindow::prepareUi() {
         if (!getObjectNameFromUser(this, *documents[activeDocumentId], name)) return;
         BRLCAD::Particle * object = new BRLCAD::Particle();
         object->SetName(name.toUtf8());
-        documents[activeDocumentId]->AddObject(*object, true); 
+        documents[activeDocumentId]->AddObject(*object, true);
     });
     createMenu->addAction(createParticleAct);
 
@@ -257,7 +257,7 @@ void MainWindow::prepareUi() {
         if (!getObjectNameFromUser(this, *documents[activeDocumentId], name)) return;
         BRLCAD::Torus * object = new BRLCAD::Torus();
         object->SetName(name.toUtf8());
-        documents[activeDocumentId]->AddObject(*object, true); 
+        documents[activeDocumentId]->AddObject(*object, true);
     });
     createMenu->addAction(createTorusAct);
 
@@ -270,7 +270,7 @@ void MainWindow::prepareUi() {
         if (activeDocumentId == -1) return;
         if (documents[activeDocumentId]->getObjectTreeWidget()->currentItem() == nullptr) return;
         size_t objectId = documents[activeDocumentId]->getObjectTreeWidget()->currentItem()->data(0, Qt::UserRole).toInt();
-        MatrixTransformWidget * matrixTransformWidget = new MatrixTransformWidget(documents[activeDocumentId],objectId, MatrixTransformWidget::Translate); 
+        MatrixTransformWidget * matrixTransformWidget = new MatrixTransformWidget(documents[activeDocumentId],objectId, MatrixTransformWidget::Translate);
     });
     editMenu->addAction(relativeMoveAct);
 
@@ -280,7 +280,7 @@ void MainWindow::prepareUi() {
         if (activeDocumentId == -1) return;
         if (documents[activeDocumentId]->getObjectTreeWidget()->currentItem() == nullptr) return;
         size_t objectId = documents[activeDocumentId]->getObjectTreeWidget()->currentItem()->data(0, Qt::UserRole).toInt();
-        MatrixTransformWidget * matrixTransformWidget = new MatrixTransformWidget(documents[activeDocumentId],objectId, MatrixTransformWidget::Scale); 
+        MatrixTransformWidget * matrixTransformWidget = new MatrixTransformWidget(documents[activeDocumentId],objectId, MatrixTransformWidget::Scale);
     });
     editMenu->addAction(relativeScaleAct);
 
@@ -290,7 +290,7 @@ void MainWindow::prepareUi() {
         if (activeDocumentId == -1) return;
         if (documents[activeDocumentId]->getObjectTreeWidget()->currentItem() == nullptr) return;
         size_t objectId = documents[activeDocumentId]->getObjectTreeWidget()->currentItem()->data(0, Qt::UserRole).toInt();
-        MatrixTransformWidget * matrixTransformWidget = new MatrixTransformWidget(documents[activeDocumentId],objectId, MatrixTransformWidget::Rotate); 
+        MatrixTransformWidget * matrixTransformWidget = new MatrixTransformWidget(documents[activeDocumentId],objectId, MatrixTransformWidget::Rotate);
     });
     editMenu->addAction(relativeRotateAct);
 
@@ -710,7 +710,7 @@ void MainWindow::prepareUi() {
     resetViewportAct->setStatusTip(tr("Reset to default camera orientation for the viewport and autoview to currently visible objects"));
     connect(resetViewportAct, &QAction::triggered, this, [this]() {
         if (activeDocumentId == -1) return;
-        documents[activeDocumentId]->getViewportGrid()->resetViewPort(documents[activeDocumentId]->getViewportGrid()->getActiveViewportId()); 
+        documents[activeDocumentId]->getViewportGrid()->resetViewPort(documents[activeDocumentId]->getViewportGrid()->getActiveViewportId());
     });
     viewMenu->addAction(resetViewportAct);
 
@@ -718,7 +718,7 @@ void MainWindow::prepareUi() {
     resetAllViewportsAct->setStatusTip(tr("Reset to default camera orientation for each viewport and autoview to visible objects"));
     connect(resetAllViewportsAct, &QAction::triggered, this, [this]() {
         if (activeDocumentId == -1) return;
-        documents[activeDocumentId]->getViewportGrid()->resetAllViewPorts(); 
+        documents[activeDocumentId]->getViewportGrid()->resetAllViewPorts();
     });
     viewMenu->addAction(resetAllViewportsAct);
 
@@ -732,7 +732,7 @@ void MainWindow::prepareUi() {
         for(Viewport * display : documents[activeDocumentId]->getViewportGrid()->getViewports()) {
             display->getCamera()->autoview();
             display->forceRerenderFrame();
-        } 
+        }
     });
     viewMenu->addAction(autoViewAct);
 
@@ -741,7 +741,7 @@ void MainWindow::prepareUi() {
     connect(autoViewSingleAct, &QAction::triggered, this, [this]() {
         if (activeDocumentId == -1) return;
         documents[activeDocumentId]->getViewport()->getCamera()->autoview();
-        documents[activeDocumentId]->getViewport()->forceRerenderFrame(); 
+        documents[activeDocumentId]->getViewport()->forceRerenderFrame();
     });
     viewMenu->addAction(autoViewSingleAct);
 
@@ -752,7 +752,7 @@ void MainWindow::prepareUi() {
         if (activeDocumentId == -1) return;
         if (documents[activeDocumentId]->getObjectTreeWidget()->currentItem() == nullptr) return;
         size_t objectId = documents[activeDocumentId]->getObjectTreeWidget()->currentItem()->data(0, Qt::UserRole).toInt();
-        documents[activeDocumentId]->getViewport()->getCamera()->centerView(objectId); 
+        documents[activeDocumentId]->getViewport()->getCamera()->centerView(objectId);
     });
     viewMenu->addAction(centerViewAct);
 
@@ -763,15 +763,15 @@ void MainWindow::prepareUi() {
     QMenu* singleView = viewMenu->addMenu(tr("&Single View"));
 
     QActionGroup *viewportMenuGroup = new QActionGroup(this);
-    for (int i = 0; i < 4; i++) {
+    for(int i=0;i<4;i++) {
         singleViewAct[i] = new QAction("Viewport " + QString::number(i + 1), this);
         viewportMenuGroup->addAction(singleViewAct[i]);
         singleViewAct[i]->setCheckable(true);
         singleViewAct[i]->setStatusTip("Viewport viewport " + QString::number(i+1));
-        connect(singleViewAct[i], &QAction::triggered, this, [this, i]() {
+        connect(singleViewAct[i], &QAction::triggered, this, [this,i]() {
             if (activeDocumentId == -1) return;
             documents[activeDocumentId]->getViewportGrid()->singleViewportMode(i);
-            currentViewport->setCurrentIndex(i); 
+            currentViewport->setCurrentIndex(i);
         });
         singleView->addAction(singleViewAct[i]);
     }
@@ -787,13 +787,13 @@ void MainWindow::prepareUi() {
         if (activeDocumentId == -1) return;
         documents[activeDocumentId]->getViewportGrid()->quadViewportMode();
         for(QAction *i : singleViewAct) i->setChecked(false);
-        currentViewport->setCurrentIndex(4); 
+        currentViewport->setCurrentIndex(4);
     });
     quadViewAct->setShortcut(Qt::Key_5);
     viewMenu->addAction(quadViewAct);
 
     viewMenu->addSeparator();
-
+    
     toggleGridAct = new QAction(tr("Toggle grid on/off"), this);
     toggleGridAct->setCheckable(true);
     toggleGridAct->setShortcut(Qt::Key_G);
@@ -812,7 +812,7 @@ void MainWindow::prepareUi() {
             toggleGridAct->setToolTip("Toggle grid ON (G)");
         }
 
-        documents[activeDocumentId]->getViewportGrid()->getActiveViewport()->forceRerenderFrame(); 
+        documents[activeDocumentId]->getViewportGrid()->getActiveViewport()->forceRerenderFrame();
     });
     viewMenu->addAction(toggleGridAct);
 
@@ -833,7 +833,7 @@ void MainWindow::prepareUi() {
             value->getObjectTreeWidget()->setTextColor();
             value->getObjectTreeWidget()->refreshItemTextColors();
             value->getProperties()->rewriteObjectNameAndType();
-        } 
+        }
     });
     selectThemeActGroup->addAction(themeAct[0]);
     selectThemeAct->addAction(themeAct[0]);
@@ -852,7 +852,7 @@ void MainWindow::prepareUi() {
             value->getObjectTreeWidget()->setTextColor();
             value->getObjectTreeWidget()->refreshItemTextColors();
             value->getProperties()->rewriteObjectNameAndType();
-        } 
+        }
     });
     selectThemeActGroup->addAction(themeAct[1]);
     selectThemeAct->addAction(themeAct[1]);
@@ -871,7 +871,7 @@ void MainWindow::prepareUi() {
         statusBar->showMessage("Raytracing current viewport...", statusBarShortMessageDuration);
         QCoreApplication::processEvents();
         documents[activeDocumentId]->getRaytraceWidget()->raytrace();
-        statusBar->showMessage("Raytracing completed.", statusBarShortMessageDuration); 
+        statusBar->showMessage("Raytracing completed.", statusBarShortMessageDuration);
     });
     raytrace->addAction(raytraceAct);
 
@@ -880,7 +880,7 @@ void MainWindow::prepareUi() {
         QSettings settings("BRLCAD", "arbalest");
         QColor color=settings.value("raytraceBackground").value<QColor>();
         QColor selectedColor = QColorDialog::getColor(color);
-        settings.setValue("raytraceBackground", selectedColor); 
+        settings.setValue("raytraceBackground", selectedColor);
     });
     raytrace->addAction(setRaytraceBackgroundColorAct);
 
@@ -889,7 +889,7 @@ void MainWindow::prepareUi() {
 
     QAction* aboutAct = new QAction(tr("About"), this);
     connect(aboutAct, &QAction::triggered, this, [this](){
-        (new AboutWindow())->show(); 
+        (new AboutWindow())->show();
     });
     help->addAction(aboutAct);
 
@@ -900,11 +900,11 @@ void MainWindow::prepareUi() {
         if (helpWidget== nullptr){
             documentArea->insertTab(0,new HelpWidget(this), "Quick Start");
         }
-        documentArea->setCurrentIndex(0); 
+        documentArea->setCurrentIndex(0);
     });
     help->addAction(helpAct);
-
-
+    
+    
     // ---------- Status bar ----------
     statusBar = new QStatusBar(this);
     setStatusBar(statusBar);
@@ -932,7 +932,7 @@ void MainWindow::prepareUi() {
     newButton->setDefaultAction(newAct);
     newButton->setObjectName("toolbarButton");
     mainTabBarCornerWidget->addWidget(newButton);
-
+    
     QToolButton* openButton = new QToolButton(menuTitleBar);
     openButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
     openButton->setDefaultAction(openAct);
@@ -970,7 +970,7 @@ void MainWindow::prepareUi() {
     resetViewports->setDefaultAction(resetAllViewportsAct);
     resetViewports->setObjectName("toolbarButton");
     mainTabBarCornerWidget->addWidget(resetViewports);
-
+    
     currentViewport->setToolTip("Change viewport");
     currentViewport->addItem("Viewport 1");
     currentViewport->addItem("Viewport 2");
@@ -978,12 +978,12 @@ void MainWindow::prepareUi() {
     currentViewport->addItem("Viewport 4");
     currentViewport->addItem("All Viewports");
     currentViewport->setCurrentIndex(3);
-    connect(currentViewport, QOverload<int>::of(&QComboBox::activated), [=](int index){
+    connect(currentViewport, QOverload<int>::of(&QComboBox::activated),[=](int index){
         if (activeDocumentId == -1) return;
         if (index <4) documents[activeDocumentId]->getViewportGrid()->singleViewportMode(index);
         else documents[activeDocumentId]->getViewportGrid()->quadViewportMode();
         for(QAction *i : singleViewAct) i->setChecked(false);
-        if(index != 4) singleViewAct[index]->setChecked(true); 
+        if(index != 4) singleViewAct[index]->setChecked(true);
     });
     mainTabBarCornerWidget->addWidget(currentViewport);
 
@@ -1121,6 +1121,10 @@ void MainWindow::prepareDockables(){
     consoleDockable = new Dockable("Console", this, true);
     addDockWidget(Qt::BottomDockWidgetArea, consoleDockable);
 
+    // Toolbox
+//    toolboxDockable = new Dockable("Make", this,true,30);
+//    toolboxDockable->hideHeader();
+//    addDockWidget(Qt::LeftDockWidgetArea, toolboxDockable);
     // added new vv
     vvDockable = new Dockable("V&V", this, true, 300);
 
@@ -1230,7 +1234,7 @@ void MainWindow::prepareDockables(){
 
 // empty new file
 void MainWindow::newFile() {
-    Document *document = new Document(documentsCount);
+    Document* document = new Document(documentsCount);
     document->getObjectTreeWidget()->setObjectName("dockableContent");
     document->getProperties()->setObjectName("dockableContent");
     documents[documentsCount++] = document;
@@ -1239,11 +1243,11 @@ void MainWindow::newFile() {
     documentArea->setCurrentIndex(tabIndex);
     connect(documents[activeDocumentId]->getObjectTreeWidget(), &ObjectTreeWidget::selectionChanged,
             this, &MainWindow::objectTreeWidgetSelectionChanged);
-
+    
 }
 
 void MainWindow::openFile(const QString& filePath) {
-    Document *document = nullptr;
+    Document* document = nullptr;
 
     try {
         document = new Document(documentsCount, &filePath);
@@ -1293,7 +1297,7 @@ void MainWindow::saveAsFileDialog() {
     if (activeDocumentId == -1) return;
     const QString filePath = QFileDialog::getSaveFileName(this, tr("Save BRL-CAD database"), QString(), "BRL-CAD Database (*.g)");
     if (!filePath.isEmpty()) {
-        if (saveFile(filePath))
+        if (saveFile(filePath)) 
         {
             documents[activeDocumentId]->setFilePath(filePath);
             QString filename(QFileInfo(filePath).fileName());
@@ -1337,7 +1341,7 @@ void MainWindow::saveFileDefaultPath() {
 bool MainWindow::saveFileDefaultPathId(int documentId) {
     if (documentId == -1) return false;
     if (documents[documentId]->getFilePath() == nullptr) return saveAsFileDialogId(documentId);
-
+    
     const QString filePath = *documents[documentId]->getFilePath();
     if (!filePath.isEmpty()) {
         if (saveFileId(filePath, documentId)) {
@@ -1365,7 +1369,7 @@ bool MainWindow::maybeSave(int documentId, bool *cancel) {
             msgBox.addButton(QMessageBox::Cancel);
             *cancel = false;
         }
-
+            
         int ret = msgBox.exec();
         switch (ret) {
         case QMessageBox::Save:
@@ -1397,12 +1401,12 @@ void MainWindow::onActiveDocumentChanged(const int newIndex){
             documents[activeDocumentId]->getConsole()->setTabToCloseId(newIndex);  // used to handle ExitRequested commands
             statusBarPathLabel->setText(documents[activeDocumentId]->getFilePath()  != nullptr ? *documents[activeDocumentId]->getFilePath() : "Untitled");
 
-            if (documents[activeDocumentId]->getViewportGrid()->inQuadViewportMode()){
+            if(documents[activeDocumentId]->getViewportGrid()->inQuadViewportMode()){
                 currentViewport->setCurrentIndex(4);
-                for (QAction *action : singleViewAct) action->setChecked(false);
+                for(QAction * action:singleViewAct) action->setChecked(false);
             }else {
                 currentViewport->setCurrentIndex(documents[activeDocumentId]->getViewportGrid()->getActiveViewportId());
-                for (QAction * action : singleViewAct) action->setChecked(false);
+                for (QAction * action:singleViewAct) action->setChecked(false);
                 singleViewAct[documents[activeDocumentId]->getViewportGrid()->getActiveViewportId()]->setChecked(true);
             }
         }
@@ -1419,7 +1423,7 @@ void MainWindow::tabCloseRequested(const int i)
 {
     int documentId = -1;
     ViewportGrid* displayGrid = dynamic_cast<ViewportGrid *>(documentArea->widget(i));
-
+    
     if (displayGrid != nullptr) {
         documentId = displayGrid->getDocument()->getDocumentId();
 
@@ -1465,7 +1469,7 @@ void MainWindow::closeEvent(QCloseEvent* event) {
     for (int documentIndex = 1; documentIndex <= documentSize; ++documentIndex) {
         displayGrid = dynamic_cast<ViewportGrid*>(documentArea->widget(documentIndex));
         int documentId = displayGrid->getDocument()->getDocumentId();
-
+        
         if (maybeSave(documentId, &cancel)) {
             continue;
         }

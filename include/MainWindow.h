@@ -97,14 +97,15 @@ private:
     void loadTheme();
     void setIcons();
     void prepareDockables();
+
     bool saveFile(const QString& filePath);
     bool maybeSave(int documentId, bool *cancel = nullptr);
 
     QAction *themeAct[2];
-
+    
 protected:
     void closeEvent(QCloseEvent* event) override;
-
+    
     void moveCameraButtonAction();
     void selectObjectButtonAction();
 
