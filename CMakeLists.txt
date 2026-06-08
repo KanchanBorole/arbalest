@@ -48,7 +48,12 @@ set(arbalest_Sources
         src/viewport/MouseAction.cpp
         src/viewport/MoveCameraMouseAction.cpp
         src/viewport/SelectMouseAction.cpp
-        src/gui/Console.cpp)
+        src/gui/Console.cpp
+        src/plugins/vv/ui/VVDockWidget.cpp
+        src/plugins/vv/ui/VVWidget.cpp
+        src/plugins/vv/ui/VVTestSelectionDialog.cpp
+        src/plugins/vv/ui/VVWidget.h)
+        
 
 set(arbalest_Link_Libraries
         ${BRLCAD_MOOSE_LIBRARY}
@@ -59,7 +64,12 @@ set(arbalest_Link_Libraries
         OpenGL::GL)
 
 # Meta-Object Compiling
-file(GLOB arbalest_HEADERS_TO_MOC ./include/*)
+file(GLOB_RECURSE arbalest_HEADERS_TO_MOC
+./include/*.h
+./src/plugins/vv/ui/*.h)
+
+#file(GLOB arbalest_HEADERS_TO_MOC ./include/*)
+#file(GLOB_RECURSE arbalest_HEADERS_TO_MOC ./include/*.h)
 qt6_wrap_cpp(arbalest_PROCESSED_MOCS  ${arbalest_HEADERS_TO_MOC} TARGET arbalest OPTIONS --no-notes)
 
 # Resource Compiling

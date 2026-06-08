@@ -13,6 +13,11 @@
 #include <QComboBox>
 #include "MouseAction.h"
 
+// Geometry Verification & Validation
+#include "../src/plugins/vv/ui/VVDockWidget.h"
+#include "../src/plugins/vv/ui/VVWidget.h"
+#include <QTimer>
+#include <QStringList>
 
 class Document;
 
@@ -39,7 +44,17 @@ private:
     Dockable *objectPropertiesDockable;
     Dockable *consoleDockable;
     Dockable *toolboxDockable;
+    // Geometry Verification & Validation
+    Dockable *vvDockable;
     QStatusBar *statusBar;
+    VVWidget *vvWidget;
+    QTimer *vvTimer;
+    QStringList vvValidationQueue;
+    bool vvRunning;
+    int vvCurrentIndex;
+    QStringList vvTests;
+    QMap<QString, QStringList> vvSuites;
+
     QTabWidget *documentArea;
     QLabel *statusBarPathLabel;
     MouseAction *m_mouseAction;
@@ -73,6 +88,11 @@ private:
     // The ID of the active document.
     int activeDocumentId = -1;
 
+    // Geometry Verification & Validation
+    void startVVValidation();
+    void processVVValidation();
+    void stopVVValidation();
+
     void prepareUi();
     void loadTheme();
     void setIcons();
@@ -82,10 +102,10 @@ private:
     bool maybeSave(int documentId, bool *cancel = nullptr);
 
     QAction *themeAct[2];
-	
+
 protected:
     void closeEvent(QCloseEvent* event) override;
-	
+
     void moveCameraButtonAction();
     void selectObjectButtonAction();
 
