@@ -68,6 +68,10 @@ void VVWidget::addIssue(
             0,
             QColor(255, 180, 180));
     }
+    else if (severity == "SUCCESS")
+    {
+        item->setBackground(0, QColor(180, 255, 180));
+    }
     else if (severity == "WARNING")
     {
         item->setBackground(
@@ -119,6 +123,14 @@ void VVWidget::addIssue(
         issueItem->setBackground(
             0,
             QColor(255, 230, 180));
+    }
+    if (type == "PASSED")
+    {
+        issueItem->setBackground(0, QColor(180, 255, 180));
+    }
+    else if (type == "ERROR")
+    {
+        issueItem->setBackground(0, QColor(255, 180, 180));
     }
     parentItem->addChild(issueItem);
     parentItem->setExpanded(true);
@@ -196,10 +208,12 @@ void VVWidget::showContextMenu(const QPoint &pos)
 
     if (selected == detailsAction)
     {
-        QMessageBox::information(
-            this,
-            "VV Details",
-            "Object: " + objectName + "\n\nPath: " + fullPath);
+        QTreeWidgetItem *item = issueTree->itemAt(pos);
+        if (item)
+        {
+            QString details = item->text(2);
+            QMessageBox::information(this, "Test Result Details", details);
+        }
     }
 
     if (selected == visualizeAction)

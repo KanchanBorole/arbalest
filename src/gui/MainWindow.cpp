@@ -36,6 +36,7 @@
 #include "../plugins/vv/ui/VVIssueDialog.h"
 #include "../plugins/vv/ui/VVTestSelectionDialog.h"
 #include "../src/plugins/vv/ui/VVWidget.h"
+#include "../plugins/vv/core/VVBackendTests.h"
 
 using namespace BRLCAD;
 using namespace std;
@@ -1576,7 +1577,6 @@ void MainWindow::startVVValidation()
 
         return;
     }
-    vvWidget->appendConsoleMessage("Validation completed.");
 
     auto objectTree =
         documents[activeDocumentId]
@@ -1599,132 +1599,99 @@ void MainWindow::startVVValidation()
     vvWidget->setValidationStatus("VALIDATION RUNNING");
     vvTimer->start(1000);
 }
-
 void MainWindow::processVVValidation()
 {
     static QSet<QString> validatedNames;
-
+    static int passCount = 0;
     static int warningCount = 0;
     static int errorCount = 0;
 
     if (vvCurrentIndex == 0)
     {
         validatedNames.clear();
-
         warningCount = 0;
         errorCount = 0;
-
         vvWidget->appendConsoleMessage("[INFO] Starting validation...");
     }
 
     if (!vvRunning)
         return;
 
+    if (vvCurrentIndex < vvValidationQueue.size())
+    {
+        QString objectName = vvValidationQueue[vvCurrentIndex];
+        QString trimmedName = objectName.trimmed();
+
+        if (trimmedName.isEmpty())
+        {
+            vvWidget->addIssue("ERROR", "Name Empty");
+            errorCount++;
+        }
+        if (trimmedName.contains(" ", Qt::CaseInsensitive))
+        {
+            vvWidget->addIssue("WARNING", "Spaces found in: " + trimmedName);
+            warningCount++;
+        }
+        if (trimmedName.toLower().contains("temp"))
+        {
+            vvWidget->addIssue("WARNING", "Temp Geometry: " + trimmedName);
+            warningCount++;
+        }
+
+        Document *activeDoc = getActiveDocument();
+        if (activeDoc && activeDoc->getDatabase())
+        {
+            BRLCAD::MemoryDatabase *db = activeDoc->getMemoryDatabase();
+            if (!db)
+            {
+                vvWidget->appendConsoleMessage("[ERROR] Database unavailable.");
+                vvCurrentIndex++;
+                return;
+            }
+
+            for (const QString &testName : vvTests)
+            {
+                QString mooseResult = VVBackendTests::runMooseTest(*db, testName, trimmedName);
+
+                bool isError = mooseResult.contains("ERROR", Qt::CaseInsensitive) ||
+                               mooseResult.contains("FAIL", Qt::CaseInsensitive) ||
+                               mooseResult.contains("FAILED", Qt::CaseInsensitive);
+
+                if (isError)
+                {
+                    errorCount++;
+                    vvWidget->addIssue("ERROR", testName, mooseResult, trimmedName, "");
+                    vvWidget->appendConsoleMessage("[ERROR] " + testName + ": " + mooseResult);
+                }
+                else if (mooseResult == "SKIP")
+                {
+                    vvWidget->appendConsoleMessage("[SKIP] " + testName);
+                }
+                else
+                {
+                    passCount++;
+                    vvWidget->addIssue("PASSED", testName, "No issues found", trimmedName, "");
+                    vvWidget->appendConsoleMessage("[PASSED] " + testName);
+                }
+                QCoreApplication::processEvents();
+            }
+        }
+        vvWidget->appendConsoleMessage("Checked object: " + objectName);
+        vvCurrentIndex++;
+    }
+
     if (vvCurrentIndex >= vvValidationQueue.size())
     {
         vvTimer->stop();
         vvRunning = false;
 
-        vvWidget->addIssue(
-            "INFO",
-            "Validation completed");
-
-        vvWidget->setValidationStatus("VALIDATION COMPLETE");
-
-        int passedCount =
-            validatedNames.size() - errorCount;
-
+        int passedCount = passCount;
         if (passedCount < 0)
             passedCount = 0;
-
-        vvWidget->updateSummary(
-            errorCount,
-            warningCount,
-            passedCount);
-        return;
+        vvWidget->updateSummary(errorCount, warningCount, passedCount);
+        vvWidget->setValidationStatus("VALIDATION COMPLETE");
+        vvWidget->appendConsoleMessage("[INFO] Validation Completed Successfully.");
     }
-
-    QString objectName = vvValidationQueue[vvCurrentIndex];
-
-    QString trimmedName = objectName.trimmed();
-
-    // Empty name
-    if (vvTests.contains("No Invalid Names"))
-    {
-        if (trimmedName.isEmpty())
-        {
-            vvWidget->addIssue(
-                "ERROR",
-                "Geometry has empty/invalid name");
-
-            vvWidget->appendConsoleMessage(
-                "[ERROR] Empty geometry name detected");
-
-            errorCount++;
-            vvCurrentIndex++;
-            return;
-        }
-    }
-    // Duplicate name
-    if (vvTests.contains("Duplicate Geometry Names"))
-    {
-        if (vvCurrentIndex == 0)
-        {
-            validatedNames.clear();
-        }
-
-        if (validatedNames.contains(trimmedName))
-        {
-            vvWidget->addIssue(
-                "ERROR",
-                "Duplicate geometry name detected: " + trimmedName);
-            errorCount++;
-
-            vvWidget->appendConsoleMessage("[ERROR] Duplicate geometry detected");
-        }
-        else
-        {
-            validatedNames.insert(trimmedName);
-        }
-    }
-    // Spaces warning
-    if (vvTests.contains("No Invalid Names"))
-    {
-        if (trimmedName.contains(" "))
-        {
-            vvWidget->addIssue(
-                "WARNING",
-                "Geometry name contains spaces: " + trimmedName);
-            warningCount++;
-
-            vvWidget->appendConsoleMessage("[WARNING] Geometry name contains spaces");
-        }
-    }
-    // Temporary geometry
-    if (vvTests.contains("Temporary Geometry Check"))
-    {
-        if (trimmedName.contains(
-                "temp",
-                Qt::CaseInsensitive))
-        {
-            vvWidget->addIssue(
-                "WARNING",
-                "Temporary Geometry Test",
-                "Temporary geometry found: ",
-                trimmedName, "/all/" + trimmedName);
-            warningCount++;
-
-            vvWidget->appendConsoleMessage("[WARNING] Temporary geometry detected");
-        }
-    }
-
-    vvWidget->appendConsoleMessage(
-        "Checking object: " + objectName);
-
-    vvWidget->addIssue(
-        "INFO",
-        "Validated geometry: " + objectName);
-    vvCurrentIndex++;
 }
 
 void MainWindow::stopVVValidation()

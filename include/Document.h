@@ -80,6 +80,10 @@ public:
     {
         return database;
     }
+    BRLCAD::MemoryDatabase* getMemoryDatabase() const
+    {
+        return database;
+    }
 
     Viewport* getViewport();
 
