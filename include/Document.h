@@ -80,7 +80,7 @@ public:
     {
         return database;
     }
-    BRLCAD::MemoryDatabase* getMemoryDatabase() const
+    BRLCAD::Database* getDatabase()
     {
         return database;
     }

@@ -1641,7 +1641,7 @@ void MainWindow::processVVValidation()
         Document *activeDoc = getActiveDocument();
         if (activeDoc && activeDoc->getDatabase())
         {
-            BRLCAD::MemoryDatabase *db = activeDoc->getMemoryDatabase();
+            BRLCAD::Database *db = activeDoc->getDatabase();
             if (!db)
             {
                 vvWidget->appendConsoleMessage("[ERROR] Database unavailable.");
