@@ -1653,25 +1653,27 @@ void MainWindow::processVVValidation()
             {
                 QString mooseResult = VVBackendTests::runMooseTest(*db, testName, trimmedName);
 
-                bool isError = mooseResult.contains("ERROR", Qt::CaseInsensitive) ||
-                               mooseResult.contains("FAIL", Qt::CaseInsensitive) ||
-                               mooseResult.contains("FAILED", Qt::CaseInsensitive);
-
-                if (isError)
+                if (mooseResult == "SKIP")
+                {
+                    vvWidget->appendConsoleMessage("[SKIP] " + testName);
+                }
+                else if (mooseResult == "No issues found (PASSED)")
+                {
+                    passCount++;
+                    vvWidget->addIssue("PASSED", testName, "No issues found", trimmedName, "");
+                    vvWidget->appendConsoleMessage("[PASSED] " + testName);
+                }
+                else if (mooseResult.startsWith("Error:", Qt::CaseInsensitive))
                 {
                     errorCount++;
                     vvWidget->addIssue("ERROR", testName, mooseResult, trimmedName, "");
                     vvWidget->appendConsoleMessage("[ERROR] " + testName + ": " + mooseResult);
                 }
-                else if (mooseResult == "SKIP")
-                {
-                    vvWidget->appendConsoleMessage("[SKIP] " + testName);
-                }
                 else
                 {
-                    passCount++;
-                    vvWidget->addIssue("PASSED", testName, "No issues found", trimmedName, "");
-                    vvWidget->appendConsoleMessage("[PASSED] " + testName);
+                    errorCount++;
+                    vvWidget->addIssue("ERROR", testName, mooseResult, trimmedName, "");
+                    vvWidget->appendConsoleMessage("[ERROR] " + testName + ": " + mooseResult);
                 }
                 QCoreApplication::processEvents();
             }

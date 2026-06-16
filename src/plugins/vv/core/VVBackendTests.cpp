@@ -81,7 +81,7 @@ QString VVBackendTests::runMooseTest(BRLCAD::Database &db, const QString &testNa
     argv.push_back(nullptr);
 
     BRLCAD::CommandString parser(db);
-    BRLCAD::CommandString::State state = parser.Parse(argv.size(), argv.data());
+    BRLCAD::CommandString::State state = parser.Parse(argc, argv.data());
 
     const char *raw = parser.Results();
     QString result = (raw != nullptr) ? QString(raw).trimmed() : "";
