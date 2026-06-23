@@ -92,6 +92,8 @@ private:
     void startVVValidation();
     void processVVValidation();
     void stopVVValidation();
+    void collectPathsRecursive(QTreeWidgetItem *item);
+    QString getFullPathFromItem(QTreeWidgetItem *item);
 
     void prepareUi();
     void loadTheme();

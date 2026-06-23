@@ -38,6 +38,12 @@ VVWidget::VVWidget(QWidget *parent)
             << "Issue Object"
             << "Full Path";
 
+    issueTree->setColumnWidth(0, 80);
+    issueTree->setColumnWidth(1, 150);
+    issueTree->setColumnWidth(2, 200);
+    issueTree->setColumnWidth(3, 100);
+    issueTree->setColumnWidth(4, 300);
+
     issueTree->setHeaderLabels(headers);
     issueTree->setAlternatingRowColors(true);
     issueTree->setRootIsDecorated(false);
@@ -94,6 +100,7 @@ void VVWidget::addIssue(
     {
         parentItem = new QTreeWidgetItem();
         parentItem->setText(0, objectName);
+        parentItem->setText(4, fullPath);
 
         issueTree->addTopLevelItem(parentItem);
 
