@@ -53,7 +53,7 @@ QMap<QString, QMap<QString, QStringList>> VVBackendTests::getDoubleGroupedTestSu
 {
     return {
         {"File", {{"lc", {"No mis-matched duplicate IDs", "Duplicate ID check"}}, {"search", {"No matrices"}}, {"title", {"Valid title", "Duplicate Geometry Names"}}}},
-        {"General", {{"search", {"No nested regions", "No empty combos", "No solids outside of regions", "All BoTs are volume mode (should return nothing)", "No BoTs are left hand orientation", "All regions have material", "All regions have LOS"}}, {"gqa", {"No null region", "Overlaps cleared to gridsize with tolerance"}}}}};
+        {"General", {{"search", {"No nested regions", "No empty combos", "No solids outside of regions", "All BoTs are volume mode (should return nothing)", "No BoTs are left hand orientation", "All regions have material", "All regions have LOS", "No regions have aircodes (except actual air regions)"}}, {"gqa", {"No null region", "Overlaps cleared to gridsize with tolerance"}}}}};
 }
 
 QString VVBackendTests::runMooseTest(BRLCAD::Database &db, const QString &testName, const QString &fullPath)
@@ -101,6 +101,8 @@ QString VVBackendTests::runMooseTest(BRLCAD::Database &db, const QString &testNa
         result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("-type region ! -attr aircode ! -attr material_id")}, fullPath);
     else if (testName == "All regions have LOS")
         result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("-type region ! -attr aircode ! -attr los")}, fullPath);
+    else if (testName == "No regions have aircodes (except actual air regions)")
+        result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("-type region -attr aircode")}, fullPath);
     else if (testName == "No matrices")
         result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("! -matrix IDN")}, fullPath);
     else if (testName == "Valid title")
