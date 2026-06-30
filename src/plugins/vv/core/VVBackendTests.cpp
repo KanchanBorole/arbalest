@@ -5,180 +5,123 @@
 #include <brlcad/CommandString/CommandString.h>
 #include <string>
 
+enum class ArgType
+{
+    ObjectName,
+    ObjectPath,
+    None
+};
+
+struct Arg
+{
+    QString value;
+    ArgType type;
+    Arg(QString v, ArgType t = ArgType::None) : value(v), type(t) {}
+};
+
+static QString executeCommand(BRLCAD::Database &db, const QList<Arg> &args, const QString &fullPath)
+{
+    std::vector<std::string> argv_str;
+    for (const auto &arg : args)
+    {
+        if (arg.type == ArgType::ObjectName)
+        {
+            argv_str.push_back(fullPath.section('/', -1).toStdString());
+        }
+        else if (arg.type == ArgType::ObjectPath)
+        {
+            argv_str.push_back(fullPath.toStdString());
+        }
+        else
+        {
+            argv_str.push_back(arg.value.toStdString());
+        }
+    }
+
+    std::vector<const char *> argv;
+    for (const auto &s : argv_str)
+        argv.push_back(s.c_str());
+
+    BRLCAD::CommandString parser(db);
+    parser.Parse((int)argv.size(), argv.data());
+    QString output = parser.Results() ? QString(parser.Results()).trimmed() : "";
+    parser.ClearResults();
+    return output;
+}
+
 QMap<QString, QMap<QString, QStringList>> VVBackendTests::getDoubleGroupedTestSuites()
 {
-    QMap<QString, QMap<QString, QStringList>> layout;
-
-    QMap<QString, QStringList> fileGroups;
-    fileGroups["lc"] = QStringList() << "No mis-matched duplicate IDs" << "Duplicate ID check";
-    fileGroups["search"] = QStringList() << "No matrices";
-    fileGroups["valid title"] = QStringList() << "Valid title" << "Duplicate Geometry Names";
-    layout["File"] = fileGroups;
-
-    QMap<QString, QStringList> generalGroups;
-    generalGroups["search"] = QStringList()
-                              << "No nested regions" << "No empty combos" << "No solids outside of regions"
-                              << "All BoTs are volume mode (should return nothing)" << "No BoTs are left hand orientation"
-                              << "All regions have material" << "All regions have LOS";
-    generalGroups["gqa"] = QStringList() << "No null region" << "Overlaps cleared to gridsize with tolerance";
-    layout["General"] = generalGroups;
-
-    return layout;
+    return {
+        {"File", {{"lc", {"No mis-matched duplicate IDs", "Duplicate ID check"}}, {"search", {"No matrices"}}, {"title", {"Valid title", "Duplicate Geometry Names"}}}},
+        {"General", {{"search", {"No nested regions", "No empty combos", "No solids outside of regions", "All BoTs are volume mode (should return nothing)", "No BoTs are left hand orientation", "All regions have material", "All regions have LOS"}}, {"gqa", {"No null region", "Overlaps cleared to gridsize with tolerance"}}}}};
 }
 
 QString VVBackendTests::runMooseTest(BRLCAD::Database &db, const QString &testName, const QString &fullPath)
 {
-    QString resolvedPath = fullPath.trimmed();
-    if (resolvedPath.contains("_GLOBAL", Qt::CaseInsensitive))
+    if (fullPath.isEmpty() || fullPath.contains("_GLOBAL", Qt::CaseInsensitive))
         return "SKIP";
-    if (resolvedPath.isEmpty())
-        return "SKIP";
-    if (!resolvedPath.startsWith("/"))
-        resolvedPath = "/" + resolvedPath;
-
-    QString objectName = resolvedPath.section('/', -1);
-    QString cmd;
-    QStringList args;
+    QString result;
 
     if (testName == "No mis-matched duplicate IDs")
-    {
-        cmd = "ls";
-        args << "-c" << resolvedPath;
-    }
+        result = executeCommand(db, {Arg("lc"), Arg("-m"), Arg("$OBJECT", ArgType::ObjectName)}, fullPath);
     else if (testName == "Duplicate ID check")
+        result = executeCommand(db, {Arg("lc"), Arg("-d"), Arg("$OBJECT", ArgType::ObjectName)}, fullPath);
+    else if (testName == "No null region")
     {
-        cmd = "ls";
-        args << "-d" << resolvedPath;
+        result = executeCommand(db, {Arg("gqa"), Arg("-Ao"), Arg("-g", ArgType::None), Arg("32mm,4mm", ArgType::None), Arg("-t", ArgType::None), Arg("0.3mm", ArgType::None), Arg("$OBJECT", ArgType::ObjectPath)}, fullPath);
+        if (result.contains("null", Qt::CaseInsensitive))
+            return "Error: Null regions detected: " + result;
+        return "No issues found (PASSED)";
+    }
+    else if (testName == "Overlaps cleared to gridsize with tolerance")
+    {
+        result = executeCommand(db, {Arg("gqa"), Arg("-Ao"), Arg("-g", ArgType::None), Arg("32mm,4mm", ArgType::None), Arg("-t", ArgType::None), Arg("0.3mm", ArgType::None), Arg("$OBJECT", ArgType::ObjectPath)}, fullPath);
+        if (result.contains("No Overlaps", Qt::CaseInsensitive))
+        {
+            return "No issues found (PASSED)";
+        }
+        else
+        {
+            return "Error: Overlaps detected: " + result;
+        }
     }
     else if (testName == "Duplicate Geometry Names")
-    {
-        cmd = "search";
-        args << resolvedPath << "-duplicate";
-    }
-    else if (testName == "No null region" || testName == "Overlaps cleared to gridsize with tolerance")
-    {
-        cmd = "gqa";
-        args << "-P" << "1" << "-Ao" << "-g" << "32mm,4mm" << "-t" << "0.3mm" << resolvedPath;
-    }
+        result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("-duplicate")}, fullPath);
     else if (testName == "No nested regions")
-    {
-        cmd = "search";
-        args << resolvedPath << "-type" << "region" << "-below" << "-type" << "region";
-    }
+        result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("-type region -below -type region")}, fullPath);
     else if (testName == "No empty combos")
-    {
-        cmd = "search";
-        args << resolvedPath << "-nnodes" << "0";
-    }
+        result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("-nnodes 0")}, fullPath);
     else if (testName == "No solids outside of regions")
-    {
-        cmd = "search";
-        args << resolvedPath << "!" << "-below" << "-type" << "region" << "-type" << "shape";
-    }
+        result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("! -below -type region -type shape")}, fullPath);
     else if (testName == "All BoTs are volume mode (should return nothing)")
-    {
-        cmd = "search";
-        args << resolvedPath << "-type" << "bot" << "!" << "-type" << "volume";
-    }
+        result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("-type bot ! -type volume")}, fullPath);
     else if (testName == "No BoTs are left hand orientation")
-    {
-        cmd = "search";
-        args << resolvedPath << "-type" << "bot" << "-param" << "orient=lh";
-    }
+        result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("-type bot -param orient=lh")}, fullPath);
     else if (testName == "All regions have material")
-    {
-        cmd = "search";
-        args << resolvedPath << "-type" << "region" << "!" << "-attr" << "aircode" << "!" << "-attr" << "material_id";
-    }
+        result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("-type region ! -attr aircode ! -attr material_id")}, fullPath);
     else if (testName == "All regions have LOS")
-    {
-        cmd = "search";
-        args << resolvedPath << "-type" << "region" << "!" << "-attr" << "aircode" << "!" << "-attr" << "los";
-    }
+        result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("-type region ! -attr aircode ! -attr los")}, fullPath);
     else if (testName == "No matrices")
-    {
-        cmd = "search";
-        args << resolvedPath << "!" << "-matrix" << "IDN";
-    }
+        result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("! -matrix IDN")}, fullPath);
     else if (testName == "Valid title")
     {
-        cmd = "title";
+        result = executeCommand(db, {Arg("title")}, fullPath);
+
+        if (!result.isEmpty())
+            return "No issues found (PASSED)";
+        else
+            return "Error: No title found";
     }
     else
-    {
         return "SKIP";
-    }
 
-    std::vector<std::string> stdParts;
-    stdParts.push_back(cmd.toStdString());
-    for (const auto &p : args)
-        stdParts.push_back(p.toStdString());
-    std::vector<const char *> argv;
-    for (const auto &part : stdParts)
-        argv.push_back(part.c_str());
-
-    BRLCAD::CommandString parser(db);
-    BRLCAD::CommandString::State state = parser.Parse((int)argv.size(), argv.data());
-
-    QString result = "";
-    if (parser.Results())
+    if (result.isEmpty() ||
+        result.contains("No issues", Qt::CaseInsensitive) ||
+        result.contains("No duplicate", Qt::CaseInsensitive) ||
+        result.contains("No Overlaps", Qt::CaseInsensitive) ||
+        result.contains("List length: 0", Qt::CaseInsensitive))
     {
-        result = QString(parser.Results()).trimmed();
-    }
-    else
-    {
-        result = "Error: No output from BRL-CAD command";
-    }
-    parser.ClearResults();
-
-    if (state != BRLCAD::CommandString::State::Success)
-        return "Error: " + result;
-
-    if (testName == "Duplicate Geometry Names")
-    {
-        QStringList lines = result.split('\n', Qt::SkipEmptyParts);
-        QMap<QString, int> pathCounts;
-
-        for (const QString &line : lines)
-        {
-            QString path = line.trimmed();
-            if (!path.isEmpty())
-            {
-                pathCounts[path]++;
-            }
-        }
-
-        for (auto it = pathCounts.begin(); it != pathCounts.end(); ++it)
-        {
-            if (it.value() > 1)
-            {
-                return "Error: Duplicate Path Found: " + it.key();
-            }
-        }
         return "No issues found (PASSED)";
     }
-    if (testName == "Valid title")
-        return (!result.isEmpty()) ? "No issues found (PASSED)" : "Error: Title empty";
-
-    if (testName == "No null region")
-    {
-        if (result.contains("no geometry", Qt::CaseInsensitive) || result.contains("is null", Qt::CaseInsensitive))
-        {
-            return "Error: Null region detected: " + result.section('\n', 0, 0);
-        }
-        return "No issues found (PASSED)";
-    }
-
-    if (testName == "Overlaps cleared to gridsize with tolerance")
-    {
-        if (result.contains("list Overlaps:", Qt::CaseInsensitive))
-        {
-            if (!result.contains("No Overlaps", Qt::CaseInsensitive))
-            {
-                return result;
-            }
-        }
-        return "No issues found (PASSED)";
-    }
-    return result.isEmpty() ? "No issues found (PASSED)" : result;
+    return result;
 }
