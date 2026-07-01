@@ -69,21 +69,60 @@ QString VVBackendTests::runMooseTest(BRLCAD::Database &db, const QString &testNa
     else if (testName == "No null region")
     {
         result = executeCommand(db, {Arg("gqa"), Arg("-Ao"), Arg("-g", ArgType::None), Arg("32mm,4mm", ArgType::None), Arg("-t", ArgType::None), Arg("0.3mm", ArgType::None), Arg("$OBJECT", ArgType::ObjectPath)}, fullPath);
-        if (result.contains("null", Qt::CaseInsensitive))
-            return "Error: Null regions detected: " + result;
+        QStringList lines = result.split('\n');
+        QStringList nullRegions;
+
+        for (const QString &line : lines)
+        {
+            if (line.contains("was not hit", Qt::CaseInsensitive))
+            {
+                nullRegions << line.trimmed();
+            }
+        }
+
+        if (!nullRegions.isEmpty())
+        {
+            return "Error: Null regions detected:\n" + nullRegions.join("\n");
+        }
+
         return "No issues found (PASSED)";
     }
     else if (testName == "Overlaps cleared to gridsize with tolerance")
     {
         result = executeCommand(db, {Arg("gqa"), Arg("-Ao"), Arg("-g", ArgType::None), Arg("32mm,4mm", ArgType::None), Arg("-t", ArgType::None), Arg("0.3mm", ArgType::None), Arg("$OBJECT", ArgType::ObjectPath)}, fullPath);
-        if (result.contains("No Overlaps", Qt::CaseInsensitive))
+        QStringList lines = result.split('\n');
+
+        bool startParsing = false;
+        QStringList overlaps;
+
+        for (const QString &line : lines)
         {
-            return "No issues found (PASSED)";
+            QString trimmed = line.trimmed();
+
+            if (trimmed.startsWith("list Overlaps", Qt::CaseInsensitive))
+            {
+                startParsing = true;
+                continue;
+            }
+
+            if (!startParsing)
+                continue;
+
+            if (trimmed.isEmpty())
+                continue;
+
+            if (trimmed.contains("was not hit", Qt::CaseInsensitive))
+                break;
+
+            overlaps << trimmed;
         }
-        else
+
+        if (!overlaps.isEmpty())
         {
-            return "Error: Overlaps detected: " + result;
+            return "Error: Overlaps detected:\n" + overlaps.join("\n");
         }
+
+        return "No issues found (PASSED)";
     }
     else if (testName == "Duplicate Geometry Names")
         result = executeCommand(db, {Arg("search"), Arg("$OBJECT", ArgType::ObjectPath), Arg("-duplicate")}, fullPath);

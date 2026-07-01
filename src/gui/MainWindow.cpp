@@ -1576,6 +1576,7 @@ void MainWindow::startVVValidation()
     vvWidget->setValidationStatus("VALIDATION RUNNING");
     vvTimer->start(1000);
 }
+
 void MainWindow::processVVValidation()
 {
     static int passCount = 0;
