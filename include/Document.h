@@ -80,6 +80,10 @@ public:
     {
         return database;
     }
+    BRLCAD::Database* getDatabase()
+    {
+        return database;
+    }
 
     Viewport* getViewport();
 

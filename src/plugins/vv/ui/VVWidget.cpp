@@ -38,6 +38,12 @@ VVWidget::VVWidget(QWidget *parent)
             << "Issue Object"
             << "Full Path";
 
+    issueTree->setColumnWidth(0, 80);
+    issueTree->setColumnWidth(1, 150);
+    issueTree->setColumnWidth(2, 200);
+    issueTree->setColumnWidth(3, 100);
+    issueTree->setColumnWidth(4, 300);
+
     issueTree->setHeaderLabels(headers);
     issueTree->setAlternatingRowColors(true);
     issueTree->setRootIsDecorated(false);
@@ -68,6 +74,10 @@ void VVWidget::addIssue(
             0,
             QColor(255, 180, 180));
     }
+    else if (severity == "SUCCESS")
+    {
+        item->setBackground(0, QColor(180, 255, 180));
+    }
     else if (severity == "WARNING")
     {
         item->setBackground(
@@ -90,6 +100,7 @@ void VVWidget::addIssue(
     {
         parentItem = new QTreeWidgetItem();
         parentItem->setText(0, objectName);
+        parentItem->setText(4, fullPath);
 
         issueTree->addTopLevelItem(parentItem);
 
@@ -119,6 +130,14 @@ void VVWidget::addIssue(
         issueItem->setBackground(
             0,
             QColor(255, 230, 180));
+    }
+    if (type == "PASSED")
+    {
+        issueItem->setBackground(0, QColor(180, 255, 180));
+    }
+    else if (type == "ERROR")
+    {
+        issueItem->setBackground(0, QColor(255, 180, 180));
     }
     parentItem->addChild(issueItem);
     parentItem->setExpanded(true);
@@ -196,10 +215,12 @@ void VVWidget::showContextMenu(const QPoint &pos)
 
     if (selected == detailsAction)
     {
-        QMessageBox::information(
-            this,
-            "VV Details",
-            "Object: " + objectName + "\n\nPath: " + fullPath);
+        QTreeWidgetItem *item = issueTree->itemAt(pos);
+        if (item)
+        {
+            QString details = item->text(2);
+            QMessageBox::information(this, "Test Result Details", details);
+        }
     }
 
     if (selected == visualizeAction)
