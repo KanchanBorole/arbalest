@@ -166,3 +166,20 @@ QString VVBackendTests::runMooseTest(BRLCAD::Database &db, const QString &testNa
     }
     return result;
 }
+
+QString VVBackendTests::getCommandForTest(const QString &testName)
+{
+    auto suites = getDoubleGroupedTestSuites();
+    for (auto it = suites.begin(); it != suites.end(); ++it)
+    {
+        auto categoryMap = it.value();
+        for (auto cmd = categoryMap.begin(); cmd != categoryMap.end(); ++cmd)
+        {
+            if (cmd.value().contains(testName))
+            {
+                return cmd.key();
+            }
+        }
+    }
+    return "N/A";
+}
