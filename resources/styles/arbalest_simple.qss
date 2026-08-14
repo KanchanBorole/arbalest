@@ -204,6 +204,80 @@ QStatusBar::item {border: 0;}
     background: "$Color-Dockable";
 }
 
+#dockableContent QTreeWidget {
+   border: 1px solid "$Color-MainWindowSeparator";
+    background: "$Color-Cell";
+    color: "$Color-CellText";
+    alternate-background-color: "$Color-CellAlternate";
+}
+
+#dockableContent QPlainTextEdit {
+    border: 1px solid "$Color-MainWindowSeparator";
+    background: "$Color-Cell";
+    color: "$Color-CellText";
+}
+
+#dockableContent QLabel {color: "$Color-CellText";}
+
+#dockableContent QTreeWidget::item:hover {background: "$Color-ObjectRowText-Hover";}
+
+#dockableContent QTreeWidget::item:selected {background: "$Color-ObjectRowText-Selected";}
+
+#dockableContent QHeaderView::section {
+    border: 0;
+    border-right: 1px solid "$Color-MainWindowSeparator";
+    border-bottom: 1px solid "$Color-MainWindowSeparator";
+    padding: 0px 6px;
+   background: "$Color-CellHeader";
+    color: "$Color-CellText";
+}
+
+#dockableContent QProgressBar {
+    border: 1px solid "$Color-ToolBarSeparator";
+    border-radius: 5px;
+    text-align: center;
+    background: "$Color-Cell";
+    color: "$Color-CellText";
+}
+
+#dockableContent QProgressBar::chunk {background-color: #4CAF50;}
+
+#dockableContent QScrollBar::handle {background: "$Color-CellScrollBar";}
+
+QGroupBox {
+    border: 1px solid "$Color-ToolBarSeparator";
+    border-radius: 4px;
+    margin-top: 12px;
+    padding-top: 6px;
+    color: "$Color-MessageBoxText";
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 8px;
+    padding: 0 4px;
+    color: "$Color-MessageBoxText";
+}
+
+QCheckBox {
+    color: "$Color-MessageBoxText";
+    spacing: 6px;
+}
+
+QListWidget {
+    border: 1px solid "$Color-ToolBarSeparator";
+    background: "$Color-Cell";
+    color: "$Color-CellText";
+}
+
+QListWidget::item:selected {background: "$Color-ObjectRowText-Selected";}
+
+#vvTestScrollContent {background: "$Color-MessageBox";}
+
+QDialog {
+    background: "$Color-MessageBox";
+    color: "$Color-MessageBoxText";
+}
 
 /* ---------- ObjectTreeWidget ---------- */
 

@@ -35,6 +35,7 @@ VVTestSelectionDialog::VVTestSelectionDialog(QWidget *parent)
         QScrollArea *scrollArea = new QScrollArea(containerStack);
         scrollArea->setWidgetResizable(true);
         QWidget *scrollContent = new QWidget(scrollArea);
+        scrollContent->setObjectName("vvTestScrollContent");
         QVBoxLayout *scrollLayout = new QVBoxLayout(scrollContent);
 
         QMap<QString, QStringList> groups = suiteIt.value();

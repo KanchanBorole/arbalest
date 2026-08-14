@@ -119,7 +119,7 @@ QString VVBackendTests::runMooseTest(BRLCAD::Database &db, const QString &testNa
 
         if (!overlaps.isEmpty())
         {
-            return "Error: Overlaps detected:\n" + overlaps.join("\n");
+            return "Error: Overlaps detected:\n" + overlaps.join("|");
         }
 
         return "No issues found (PASSED)";

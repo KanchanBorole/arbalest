@@ -76,6 +76,7 @@ qt6_wrap_cpp(arbalest_PROCESSED_MOCS  ${arbalest_HEADERS_TO_MOC} TARGET arbalest
 
 # Resource Compiling
 qt6_add_resources(arbalest_PROCESSED_RCC resources/resources.qrc)
+qt6_add_resources(arbalest_PROCESSED_RCC src/plugins/vv/resources/vv.qrc)
 
 include_directories(${arbalest_Include_Dirs})
 link_directories(${BRLCAD_MOSE_LIBRARY_DIR})

@@ -54,6 +54,7 @@ private:
     int vvCurrentIndex;
     QStringList vvTests;
     QMap<QString, QStringList> vvSuites;
+    QMap<int, VVDocumentState> vvStatesByDocument;
 
     QTabWidget *documentArea;
     QLabel *statusBarPathLabel;

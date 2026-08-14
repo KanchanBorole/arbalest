@@ -1,3 +1,4 @@
+$Color-DefaultFontColor: #e5e5e5;
 $Color-MainWindow: #3b3b3b;
 $Color-MainWindowSeparator: #2f2f2f;
 $Color-MessageBox: #3b3b3b;
@@ -42,6 +43,9 @@ $Color-PropertiesChildrenButtonArrow: #e5e5e5;
 $Color-PropertiesPathText: #e5e5e5;
 $Color-PropertiesChildrenText: #e5e5e5;
 $Color-Cell: #606060;
+$Color-CellAlternate: #5b5b5b;
+$Color-CellHeader: #6b6b6b;
+$Color-CellScrollBar: #8a8a8a;
 $Color-CellText: #e5e5e5;
 $Color-DataCellHeader: #30374a;
 $Color-DataCellHeaderText: #e5e5e5;

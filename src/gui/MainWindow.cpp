@@ -1129,9 +1129,11 @@ void MainWindow::prepareDockables(){
 //    toolboxDockable->hideHeader();
 //    addDockWidget(Qt::LeftDockWidgetArea, toolboxDockable);
     // added new vv
-    vvDockable = new Dockable("V&V", this, true, 300);
+    vvDockable = new Dockable("Verification & Validation", this, true, 300);
 
     vvWidget = new VVWidget(this);
+    vvWidget->setObjectName("dockableContent");
+    vvWidget->mainWindow = this;
     connect(vvWidget,
             &VVWidget::geometrySelected,
             this,
@@ -1397,6 +1399,9 @@ void MainWindow::onActiveDocumentChanged(const int newIndex){
     ViewportGrid * displayGrid = dynamic_cast<ViewportGrid*>(documentArea->widget(newIndex));
     if (displayGrid != nullptr){
         if (displayGrid->getDocument()->getDocumentId() != activeDocumentId){
+            if (vvWidget && activeDocumentId != -1){
+                vvStatesByDocument[activeDocumentId] = vvWidget->captureState();
+            }
             activeDocumentId = displayGrid->getDocument()->getDocumentId();
             objectTreeWidgetDockable->setContent(documents[activeDocumentId]->getObjectTreeWidget());
             objectPropertiesDockable->setContent(documents[activeDocumentId]->getProperties());
@@ -1412,8 +1417,20 @@ void MainWindow::onActiveDocumentChanged(const int newIndex){
                 for(QAction * action:singleViewAct) action->setChecked(false);
                 singleViewAct[documents[activeDocumentId]->getViewportGrid()->getActiveViewportId()]->setChecked(true);
             }
+            if (vvWidget){
+                auto it = vvStatesByDocument.find(activeDocumentId);
+                if (it != vvStatesByDocument.end()) {
+                    vvWidget->restoreState(it.value());
+                }else {
+                    vvWidget->resetToIdle();
+                }
+            }
         }
     }else if (activeDocumentId != -1){
+        if (vvWidget){
+            vvStatesByDocument[activeDocumentId] = vvWidget->captureState();
+            vvWidget->resetToIdle();
+        }
         objectTreeWidgetDockable->clear();
         objectPropertiesDockable->clear();
         consoleDockable->clear();
@@ -1438,25 +1455,24 @@ void MainWindow::tabCloseRequested(const int i)
     if (documentId != -1) {
         delete documents[documentId];
         documents.erase(documentId);
+        vvStatesByDocument.remove(documentId);
+    }
+    if (documentArea->currentIndex() == -1) {
+        objectTreeWidgetDockable->clear();
+        objectPropertiesDockable->clear();
+        statusBarPathLabel->setText("");
+        activeDocumentId = -1;
+ 
         if (vvWidget)
         {
-            vvWidget->clearIssues();
+            vvWidget->resetToIdle();
 
             vvValidationQueue.clear();
             vvCurrentIndex = 0;
             vvRunning = false;
 
             vvTimer->stop();
-
-            vvWidget->setValidationStatus("Validation idle");
-            vvWidget->updateSummary(0, 0, 0);
         }
-    }
-    if (documentArea->currentIndex() == -1){
-        objectTreeWidgetDockable->clear();
-        objectPropertiesDockable->clear();
-        statusBarPathLabel->setText("");
-        activeDocumentId = -1;
     }
 }
 
@@ -1572,6 +1588,8 @@ void MainWindow::startVVValidation()
     {
         collectPathsRecursive(objectTree->topLevelItem(i));
     }
+    vvWidget->showProgress();
+    vvWidget->setProgress(0);
     vvRunning = true;
     vvWidget->setValidationStatus("VALIDATION RUNNING");
     vvTimer->start(1000);
@@ -1589,6 +1607,7 @@ void MainWindow::processVVValidation()
         warningCount = 0;
         errorCount = 0;
         vvWidget->appendConsoleMessage("[INFO] Starting validation...");
+        vvWidget->setProgress(0);
     }
 
     if (!vvRunning)
@@ -1647,8 +1666,72 @@ void MainWindow::processVVValidation()
                 }
                 else
                 {
-                    errorCount++;
-                    vvWidget->addIssue("ERROR", testName, mooseResult, objectName, fullPath);
+                    QString rawResult = mooseResult.startsWith("Error:", Qt::CaseInsensitive) ? mooseResult.mid(7) : mooseResult;
+
+                    if (testName.contains("Duplicate ID", Qt::CaseInsensitive))
+                    {
+                        QStringList lines = rawResult.split("\n", Qt::SkipEmptyParts);
+                        int instanceCount = 0;
+                        foreach (const QString &line, lines)
+                        {
+                            if (line.contains("List length:"))
+                            {
+                                instanceCount = line.section(':', 1).trimmed().toInt();
+                            }
+                        }
+
+                        QSet<QString> processedIds;
+                        foreach (const QString &line, lines)
+                        {
+                            QString trimmed = line.trimmed();
+                            QRegularExpression re("^(\\d{4,})");
+                            QRegularExpressionMatch match = re.match(trimmed);
+
+                            if (match.hasMatch())
+                            {
+                                QString id = match.captured(1);
+                                if (processedIds.contains(id))
+                                    continue;
+                                processedIds.insert(id);
+
+                                QStringList filtered;
+                                filtered << "ID    MAT  LOS AIR REGION        PARENT";
+                                foreach (const QString &l, lines)
+                                {
+                                    if (l.startsWith(id))
+                                    {
+                                        filtered << l;
+                                    }
+                                }
+                                int actualCountForThisId = filtered.size() - 1;
+                                QString specificDetails = filtered.join("\n") + "\nDone.";
+                                QString summary = QString("Duplicate Region ID %1 (%2 instances)")
+                                                      .arg(id)
+                                                      .arg(actualCountForThisId);
+                                errorCount++;
+
+                                vvWidget->addIssueWithDetails("ERROR", testName, summary, objectName, fullPath, specificDetails);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        QStringList lines = rawResult.split("\n", Qt::SkipEmptyParts);
+
+                        foreach (const QString &line, lines)
+                        {
+                            QString trimmedLine = line.trimmed();
+                            if (trimmedLine.contains("detected:", Qt::CaseInsensitive))
+                                continue;
+                            foreach (const QString &err, trimmedLine.split("|", Qt::SkipEmptyParts))
+                            {
+                                if (err.trimmed().isEmpty())
+                                    continue;
+                                errorCount++;
+                                vvWidget->addIssue("ERROR", testName, err.trimmed(), objectName, fullPath);
+                            }
+                        }
+                    }
                     vvWidget->appendConsoleMessage("[ERROR] " + testName + ": " + mooseResult);
                 }
                 QCoreApplication::processEvents();
@@ -1656,15 +1739,36 @@ void MainWindow::processVVValidation()
         }
         vvWidget->appendConsoleMessage("Checked object: " + fullPath);
         vvCurrentIndex++;
+
+        int totalTests = vvValidationQueue.size();
+        if (totalTests > 0)
+        {
+            int progress = (vvCurrentIndex * 100) / totalTests;
+            vvWidget->setProgress(progress);
+        }
     }
 
     if (vvCurrentIndex >= vvValidationQueue.size())
     {
         vvTimer->stop();
         vvRunning = false;
-        vvWidget->updateSummary(errorCount, warningCount, passCount);
-        vvWidget->setValidationStatus("VALIDATION COMPLETE");
-        vvWidget->appendConsoleMessage("[INFO] Validation Completed Successfully.");
+        if (vvCurrentIndex >= vvValidationQueue.size())
+        {
+            vvTimer->stop();
+            vvRunning = false;
+            vvWidget->setProgress(100);
+            vvWidget->updateSummary(errorCount, warningCount, passCount);
+            vvWidget->setValidationStatus("VALIDATION COMPLETE");
+            vvWidget->appendConsoleMessage("[INFO] Validation Completed Successfully.");
+
+            if (activeDocumentId != -1)
+            {
+                vvWidget->setProperty("isValidationRun", true);
+                vvWidget->setProperty("validationErrors", errorCount);
+                vvWidget->setProperty("validationWarnings", warningCount);
+                vvWidget->setProperty("validationPasses", passCount);
+            }
+        }
     }
 }
 
