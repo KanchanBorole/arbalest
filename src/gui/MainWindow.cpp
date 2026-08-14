@@ -493,220 +493,46 @@ void MainWindow::prepareUi() {
     exportMenu->addAction(exportCSVAct);
 
     vvMenu->addMenu(exportMenu);
-    // csv export
-    connect(exportCSVAct,
-            &QAction::triggered,
-            this,
-            [this]()
-            {
-                QString fileName =
-                    QFileDialog::getSaveFileName(
-                        this,
-                        "Export VV Report",
-                        "",
-                        "CSV Files (*.csv)");
+    auto exportHandler = [this](const QString &type)
+    {
+        QString ext = type.toLower();
+        QString fileName = QFileDialog::getSaveFileName(this, "Export " + type, "", type + " Files (*." + ext + ")");
+        if (fileName.isEmpty())
+            return;
 
-                if (fileName.isEmpty())
-                    return;
+        QString modelName = "Unknown_Model";
+        Document *doc = getActiveDocument();
 
-                QFile file(fileName);
+        if (doc && doc->getFilePath() != nullptr)
+        {
+            modelName = QFileInfo(*doc->getFilePath()).fileName();
+        }
 
-                if (!file.open(
-                        QIODevice::WriteOnly | QIODevice::Text))
-                {
-                    vvWidget->addIssue(
-                        "ERROR",
-                        "Failed to export CSV");
+        bool success = false;
+        if (type == "CSV")
+            success = VVReportGenerator::exportToCSV(fileName, vvWidget->getIssueTree(), modelName);
+        else if (type == "JSON")
+            success = VVReportGenerator::exportToJSON(fileName, vvWidget->getIssueTree(), modelName);
+        else if (type == "TXT")
+            success = VVReportGenerator::exportToTXT(fileName, vvWidget->getIssueTree(), modelName);
 
-                    return;
-                }
+        if (success)
+        {
+            vvWidget->appendConsoleMessage(type + " report exported: " + fileName);
+            vvWidget->addIssue("INFO", type + " report exported for: " + modelName);
+        }
+        else
+        {
+            vvWidget->addIssue("ERROR", "Failed to export " + type);
+        }
+    };
 
-                QTextStream out(&file);
-
-                out << "Severity,Issue\n";
-
-                for (int i = 0;
-                     i < vvWidget->getIssueTree()
-                             ->topLevelItemCount();
-                     i++)
-                {
-                    QTreeWidgetItem *item = vvWidget->getIssueTree()->topLevelItem(i);
-
-                    QString severity = item->text(0);
-                    QString testName = item->text(1);
-                    QString description = item->text(2);
-                    QString objectName = item->text(3);
-                    QString fullPath = item->text(4);
-
-                    out << severity << ","
-                        << testName << ","
-                        << description << ","
-                        << objectName << ","
-                        << fullPath << "\n";
-                }
-                file.close();
-
-                vvWidget->appendConsoleMessage("CSV report exported: " + fileName);
-
-                vvWidget->addIssue(
-                    "INFO",
-                    "CSV report exported");
-            });
-
-    // txt export
-    connect(exportTXTAct,
-            &QAction::triggered,
-            this,
-            [this]()
-            {
-                QString fileName =
-                    QFileDialog::getSaveFileName(
-                        this,
-                        "Export TXT Report",
-                        "",
-                        "Text Files (*.txt)");
-
-                if (fileName.isEmpty())
-                    return;
-
-                QFile file(fileName);
-
-                if (!file.open(
-                        QIODevice::WriteOnly | QIODevice::Text))
-                {
-                    vvWidget->addIssue(
-                        "ERROR",
-                        "Failed to export TXT");
-
-                    return;
-                }
-
-                QTextStream out(&file);
-
-                out << "Verification & Validation Report\n";
-                out << "================================\n\n";
-
-                for (int i = 0;
-                     i < vvWidget->getIssueTree()
-                             ->topLevelItemCount();
-                     i++)
-                {
-                    QTreeWidgetItem *item =
-                        vvWidget->getIssueTree()
-                            ->topLevelItem(i);
-
-                    out << "Severity: "
-                        << item->text(0) << "\n";
-
-                    out << "Test Name: "
-                        << item->text(1) << "\n";
-
-                    out << "Description: "
-                        << item->text(2) << "\n";
-
-                    out << "Object: "
-                        << item->text(3) << "\n";
-
-                    out << "Full Path: "
-                        << item->text(4) << "\n";
-
-                    out << "--------------------------------\n";
-                }
-
-                file.close();
-
-                vvWidget->appendConsoleMessage(
-                    "TXT report exported: " + fileName);
-
-                vvWidget->addIssue(
-                    "INFO",
-                    "TXT report exported");
-            });
-
-    // json export
-    connect(exportJSONAct,
-            &QAction::triggered,
-            this,
-            [this]()
-            {
-                QString fileName =
-                    QFileDialog::getSaveFileName(
-                        this,
-                        "Export JSON Report",
-                        "",
-                        "JSON Files (*.json)");
-
-                if (fileName.isEmpty())
-                    return;
-
-                QFile file(fileName);
-
-                if (!file.open(
-                        QIODevice::WriteOnly | QIODevice::Text))
-                {
-                    vvWidget->addIssue(
-                        "ERROR",
-                        "Failed to export JSON");
-
-                    return;
-                }
-
-                QTextStream out(&file);
-
-                out << "{\n";
-                out << " \"validation_results\": [\n";
-
-                for (int i = 0;
-                     i < vvWidget->getIssueTree()
-                             ->topLevelItemCount();
-                     i++)
-                {
-                    QTreeWidgetItem *item = vvWidget->getIssueTree()->topLevelItem(i);
-
-                    out << " {\n";
-
-                    out << " \"severity\": \""
-                        << item->text(0)
-                        << "\",\n";
-
-                    out << " \"test_name\": \""
-                        << item->text(1)
-                        << "\",\n";
-
-                    out << " \"description\": \""
-                        << item->text(2)
-                        << "\",\n";
-
-                    out << " \"issue_object\": \""
-                        << item->text(3)
-                        << "\",\n";
-
-                    out << " \"full_path\": \""
-                        << item->text(4)
-                        << "\"\n";
-
-                    out << " }";
-
-                    if (i != vvWidget->getIssueTree()
-                                     ->topLevelItemCount() -
-                                 1)
-                    {
-                        out << ",";
-                    }
-                    out << "\n";
-                }
-
-                out << " ]\n";
-                out << "}\n";
-
-                file.close();
-
-                vvWidget->appendConsoleMessage("JSON report exported: " + fileName);
-
-                vvWidget->addIssue(
-                    "INFO",
-                    "JSON report exported");
-            });
+    connect(exportCSVAct, &QAction::triggered, this, [=]()
+            { exportHandler("CSV"); });
+    connect(exportJSONAct, &QAction::triggered, this, [=]()
+            { exportHandler("JSON"); });
+    connect(exportTXTAct, &QAction::triggered, this, [=]()
+            { exportHandler("TXT"); });
 
     QAction* resetViewportAct = new QAction("Reset current viewport", this);
     resetViewportAct->setStatusTip(tr("Reset to default camera orientation for the viewport and autoview to currently visible objects"));
