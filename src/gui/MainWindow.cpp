@@ -37,6 +37,7 @@
 #include "../plugins/vv/ui/VVTestSelectionDialog.h"
 #include "../src/plugins/vv/ui/VVWidget.h"
 #include "../plugins/vv/core/VVBackendTests.h"
+#include "../plugins/vv/core/VVReportGenerator.h"
 #include <QTreeWidget>
 
 using namespace BRLCAD;

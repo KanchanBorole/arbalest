@@ -53,7 +53,8 @@ set(arbalest_Sources
         src/plugins/vv/ui/VVWidget.cpp
         src/plugins/vv/ui/VVTestSelectionDialog.cpp
         src/plugins/vv/ui/VVWidget.h
-        src/plugins/vv/core/VVBackendTests.cpp)
+        src/plugins/vv/core/VVBackendTests.cpp
+        src/plugins/vv/core/VVReportGenerator.cpp)
         
 
 set(arbalest_Link_Libraries
