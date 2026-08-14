@@ -1,5 +1,8 @@
 #include "VVWidget.h"
 #include <QMessageBox>
+#include <QComboBox>
+#include <QTextBrowser>
+#include "../core/VVBackendTests.h" 
 
 VVWidget::VVWidget(QWidget *parent)
     : QWidget(parent)
@@ -193,34 +196,77 @@ void VVWidget::setValidationStatus(
 
 void VVWidget::showContextMenu(const QPoint &pos)
 {
-    QTreeWidgetItem *item = issueTree->itemAt(pos);
-
-    if (!item)
-        return;
-
-    QString objectName = item->text(3);
-    QString fullPath = item->text(4);
-
-    QMenu menu;
-
-    QAction *visualizeAction = menu.addAction("Visualize Object");
-    QAction *detailsAction = menu.addAction("Test Result Details");
-    QAction *copyAction = menu.addAction("Copy Object Path");
-    QAction *selected = menu.exec(issueTree->viewport()->mapToGlobal(pos));
-
-    if (selected == copyAction)
-    {
-        QApplication::clipboard()->setText(fullPath);
-    }
-
-    if (selected == detailsAction)
+    QList<QTreeWidgetItem *> selectedItems = issueTree->selectedItems();
+    if (selectedItems.isEmpty())
     {
         QTreeWidgetItem *item = issueTree->itemAt(pos);
-        if (item)
+        if (!item)
+            return;
+        selectedItems.append(item);
+    }
+
+    QMenu menu;
+    QAction *visualizeAction = menu.addAction("Visualize Object");
+
+    QAction *detailsAction = nullptr;
+    QAction *copyAction = nullptr;
+
+    if (selectedItems.size() == 1)
+    {
+        detailsAction = menu.addAction("Test Result Details");
+        copyAction = menu.addAction("Copy Object Path");
+    }
+
+    QAction *selected = menu.exec(issueTree->viewport()->mapToGlobal(pos));
+    if (!selected)
+        return;
+
+    if (copyAction && selected == copyAction)
+    {
+        QApplication::clipboard()->setText(selectedItems.first()->text(4));
+    }
+    else if (detailsAction && selected == detailsAction)
+    {
+        QTreeWidgetItem *item = selectedItems.first();
+        QDialog dialog(this);
+        dialog.setWindowTitle("Test Result Details");
+        dialog.setMinimumWidth(500);
+
+        QVBoxLayout *layout = new QVBoxLayout(&dialog);
+        QTextBrowser *browser = new QTextBrowser();
+
+        QString rawDesc = item->data(2, Qt::UserRole).toString();
+        if (rawDesc.isEmpty())
         {
-            QString details = item->text(2);
-            QMessageBox::information(this, "Test Result Details", details);
+            rawDesc = item->text(2);
         }
+
+        QString formattedDesc = "<pre style='font-family: monospace;'>" + rawDesc + "</pre>";
+        QString htmlContent = QString(
+                                  "<style>"
+                                  "  body { margin: 0; padding: 0; }"
+                                  "  p { margin: 0 0 8px 0; }"
+                                  "  pre { margin: 0; font-family: monospace; white-space: pre-wrap; }"
+                                  "</style>"
+                                  "<p><b>Test Name:</b><br>%1</p>"
+                                  "<p><b>Command:</b><br>%2</p>"
+                                  "<p><b>Result Code:</b><br>%3</p>"
+                                  "<p style='margin-bottom: 2px;'><b>Description:</b></p>"
+                                  "%4")
+                                  .arg(item->text(1),
+                                       VVBackendTests::getCommandForTest(item->text(1)),
+                                       item->text(0),
+                                       formattedDesc);
+
+        browser->setHtml(htmlContent);
+        browser->setStyleSheet("border: none; background-color: transparent;");
+        layout->addWidget(browser);
+
+        QPushButton *okBtn = new QPushButton("OK");
+        connect(okBtn, &QPushButton::clicked, &dialog, &QDialog::accept);
+        layout->addWidget(okBtn);
+
+        dialog.exec();
     }
 
     if (selected == visualizeAction)
@@ -228,7 +274,7 @@ void VVWidget::showContextMenu(const QPoint &pos)
         QMessageBox::information(
             this,
             "Visualize",
-            "Visualization for:\n" + objectName);
+            "Visualization for:\n" + objectName());
     }
 }
 
