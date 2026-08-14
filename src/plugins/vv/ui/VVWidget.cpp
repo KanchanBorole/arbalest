@@ -223,12 +223,127 @@ void VVWidget::showContextMenu(const QPoint &pos)
         }
     }
 
-    if (selected == visualizeAction)
+    else if (selected == visualizeAction)
     {
-        QMessageBox::information(
-            this,
-            "Visualize",
-            "Visualization for:\n" + objectName);
+        if (!mainWindow)
+            return;
+        Document *doc = mainWindow->getActiveDocument();
+        if (!doc)
+            return;
+
+        ObjectTree *tree = doc->getObjectTree();
+        if (!tree)
+            return;
+
+        GeometryRenderer *renderer = doc->getGeometryRenderer();
+        if (!renderer)
+        {
+            return;
+        }
+
+        QHash<size_t, ObjectTreeItem *> &allItems = tree->getItems();
+        for (auto it = allItems.begin(); it != allItems.end(); ++it)
+        {
+            ObjectTreeItem *item = it.value();
+            if (item && !item->isRoot())
+            {
+                tree->changeVisibilityState(item->getObjectId(), false);
+                renderer->clearSolidIfAvailable(item->getObjectId());
+            }
+        }
+
+        QSet<QString> processedIdentifiers;
+
+        for (QTreeWidgetItem *widgetItem : selectedItems)
+        {
+            QString rawDetails = widgetItem->data(2, Qt::UserRole).toString();
+            if (rawDetails.isEmpty())
+            {
+                rawDetails = widgetItem->text(2);
+            }
+            if (rawDetails.contains("REGION", Qt::CaseInsensitive) && rawDetails.contains("PARENT", Qt::CaseInsensitive))
+            {
+                QStringList lines = rawDetails.split("\n", Qt::SkipEmptyParts);
+
+                for (const QString &line : lines)
+                {
+                    if (line.startsWith("ID") || line.startsWith("Done") || line.trimmed().isEmpty())
+                    {
+                        continue;
+                    }
+
+                    QStringList columns = line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+                    if (columns.size() >= 5)
+                    {
+                        QString regionName = columns.at(4);
+                        for (auto it = allItems.begin(); it != allItems.end(); ++it)
+                        {
+                            ObjectTreeItem *treeItem = it.value();
+                            if (treeItem && (treeItem->getName().compare(regionName, Qt::CaseInsensitive) == 0 ||
+                                             treeItem->getPath().endsWith("/" + regionName, Qt::CaseInsensitive)))
+                            {
+                                QString uniqueKey = treeItem->getPath();
+                                if (!processedIdentifiers.contains(uniqueKey))
+                                {
+                                    processedIdentifiers.insert(uniqueKey);
+                                    tree->changeVisibilityState(treeItem->getObjectId(), true);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                QStringList parts = rawDetails.split(' ');
+                for (QString part : parts)
+                {
+                    part = part.trimmed();
+                    if (part.startsWith("/"))
+                    {
+                        int spaceIdx = part.indexOf(' ');
+                        if (spaceIdx != -1)
+                            part = part.left(spaceIdx);
+                        part = part.remove('\'').remove('"').remove(')').remove('(').trimmed();
+
+                        for (auto it = allItems.begin(); it != allItems.end(); ++it)
+                        {
+                            ObjectTreeItem *treeItem = it.value();
+                            if (treeItem && treeItem->getPath().compare(part, Qt::CaseInsensitive) == 0)
+                            {
+                                QString uniqueKey = treeItem->getPath();
+                                if (!processedIdentifiers.contains(uniqueKey))
+                                {
+                                    processedIdentifiers.insert(uniqueKey);
+                                    tree->changeVisibilityState(treeItem->getObjectId(), true);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        renderer->refreshForVisibilityAndSolidChanges();
+        renderer->render();
+
+        if (doc->getObjectTreeWidget())
+        {
+            doc->getObjectTreeWidget()->viewport()->update();
+            doc->getObjectTreeWidget()->update();
+        }
+        if (doc->getViewport())
+        {
+            QWidget *viewportWidget = dynamic_cast<QWidget *>(doc->getViewport());
+            if (viewportWidget)
+            {
+                viewportWidget->update();
+            }
+        }
+        if (mainWindow->centralWidget())
+        {
+            mainWindow->centralWidget()->update();
+        }
     }
 }
 
