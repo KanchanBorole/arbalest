@@ -48,12 +48,7 @@ set(arbalest_Sources
         src/viewport/MouseAction.cpp
         src/viewport/MoveCameraMouseAction.cpp
         src/viewport/SelectMouseAction.cpp
-        src/gui/Console.cpp
-        src/plugins/vv/ui/VVDockWidget.cpp
-        src/plugins/vv/ui/VVWidget.cpp
-        src/plugins/vv/ui/VVTestSelectionDialog.cpp
-        src/plugins/vv/ui/VVWidget.h
-        src/plugins/vv/core/VVBackendTests.cpp)
+        src/gui/Console.cpp)
         
 
 set(arbalest_Link_Libraries
@@ -66,9 +61,7 @@ set(arbalest_Link_Libraries
 
 # Meta-Object Compiling
 file(GLOB_RECURSE arbalest_HEADERS_TO_MOC
-./include/*.h
-./src/plugins/vv/ui/*.h
-./src/plugins/vv/core/*.h)
+./include/*.h)
 
 #file(GLOB arbalest_HEADERS_TO_MOC ./include/*)
 #file(GLOB_RECURSE arbalest_HEADERS_TO_MOC ./include/*.h)
@@ -86,9 +79,11 @@ ELSE(MSVC)
     ADD_DEFINITIONS("-DBRLCAD_MOOSE_EXPORT=")
 ENDIF(MSVC)
 
+ADD_SUBDIRECTORY(src/plugins)
+
 add_executable(arbalest
         ${arbalest_Sources}
         ${arbalest_PROCESSED_MOCS}
         ${arbalest_PROCESSED_RCC})
 
-target_link_libraries(arbalest ${arbalest_Link_Libraries})
+target_link_libraries(arbalest VVPlugin ${arbalest_Link_Libraries})

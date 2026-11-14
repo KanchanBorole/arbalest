@@ -5,6 +5,7 @@
 #include <QPushButton>
 #include <QtWidgets/QMdiArea>
 #include <unordered_map>
+#include <vector>
 #include "Document.h"
 #include "Dockable.h"
 #include "QSSPreprocessor.h"
@@ -12,12 +13,10 @@
 #include <QMenuBar>
 #include <QComboBox>
 #include "MouseAction.h"
-
-// Geometry Verification & Validation
-#include "../src/plugins/vv/ui/VVDockWidget.h"
-#include "../src/plugins/vv/ui/VVWidget.h"
-#include <QTimer>
+#include "Plugin.h"
 #include <QStringList>
+
+class VVPlugin;
 
 class Document;
 
@@ -47,13 +46,6 @@ private:
     // Geometry Verification & Validation
     Dockable *vvDockable;
     QStatusBar *statusBar;
-    VVWidget *vvWidget;
-    QTimer *vvTimer;
-    QStringList vvValidationQueue;
-    bool vvRunning;
-    int vvCurrentIndex;
-    QStringList vvTests;
-    QMap<QString, QStringList> vvSuites;
 
     QTabWidget *documentArea;
     QLabel *statusBarPathLabel;
@@ -89,11 +81,14 @@ private:
     int activeDocumentId = -1;
 
     // Geometry Verification & Validation
-    void startVVValidation();
-    void processVVValidation();
-    void stopVVValidation();
-    void collectPathsRecursive(QTreeWidgetItem *item);
+    QStringList getTopObjectPaths();
     QString getFullPathFromItem(QTreeWidgetItem *item);
+
+    // Plugins
+    std::vector<Plugin*> m_plugins;
+    VVPlugin*            m_vvPlugin;
+
+    void CreatePluginMenu(void);
 
     void prepareUi();
     void loadTheme();
@@ -124,5 +119,6 @@ public slots:
     void newFile(); // empty new file
     void openFile(const QString& filePath);
     void updateMouseButtonObjectState();
+    void PerformPluginAction(QAction* action);
 };
 #endif // MAINWINDOW_H

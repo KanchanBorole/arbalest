@@ -1,7 +1,6 @@
 #include "VVBackendTests.h"
 #include <QDebug>
 #include <brlcad/Database/Database.h>
-#include "Document.h"
 #include <brlcad/CommandString/CommandString.h>
 #include <string>
 

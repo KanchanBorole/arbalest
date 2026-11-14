@@ -32,11 +32,7 @@
 #include "SelectMouseAction.h"
 #include "Console.h"
 
-// vv
-#include "../plugins/vv/ui/VVIssueDialog.h"
-#include "../plugins/vv/ui/VVTestSelectionDialog.h"
-#include "../src/plugins/vv/ui/VVWidget.h"
-#include "../plugins/vv/core/VVBackendTests.h"
+#include "VVPlugin.h"
 #include <QTreeWidget>
 
 using namespace BRLCAD;
@@ -44,7 +40,57 @@ using namespace std;
 
 
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_mouseAction{nullptr} {
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_mouseAction{nullptr}, m_vvPlugin(nullptr) {
+    m_vvPlugin = new VVPlugin;
+
+    VVPlugin::Host vvHost;
+
+    vvHost.parent         = this;
+    vvHost.activeDatabase = [this]() -> BRLCAD::Database* {
+        Document* document = getActiveDocument();
+
+        return (document != nullptr) ? document->getDatabase() : nullptr;
+    };
+    vvHost.topObjectPaths = [this]() {
+        return getTopObjectPaths();
+    };
+    vvHost.selectObject   = [this](const QString& name) {
+        if (activeDocumentId == -1)
+            return;
+
+        auto objectTree = documents[activeDocumentId]->getObjectTreeWidget();
+
+        for (int i = 0; i < objectTree->topLevelItemCount(); i++) {
+            auto item = objectTree->topLevelItem(i);
+
+            if (!item)
+                continue;
+
+            if (item->text(0) == name) {
+                objectTree->setCurrentItem(item);
+
+                size_t objectId = item->data(0, Qt::UserRole).toInt();
+
+                documents[activeDocumentId]->getViewport()->getCamera()->centerView(objectId);
+                documents[activeDocumentId]->getViewport()->forceRerenderFrame();
+
+                statusBar->showMessage("Selected geometry: " + name);
+
+                break;
+            }
+        }
+    };
+    vvHost.showPanel      = [this]() {
+        if (vvDockable != nullptr) {
+            vvDockable->show();
+            vvDockable->raise();
+        }
+    };
+
+    m_vvPlugin->SetHost(vvHost);
+
+    m_plugins.push_back(m_vvPlugin);
+
     loadTheme();
     prepareUi();
     setIcons();
@@ -57,17 +103,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_mouseAction{nul
         openFile(QString(QCoreApplication::arguments().at(1)));
     }
 
-    vvTimer = new QTimer(this);
-    vvRunning = false;
-    vvCurrentIndex = 0;
-
-    connect(vvTimer,
-            &QTimer::timeout,
-            this,
-            &MainWindow::processVVValidation);
 }
 
 MainWindow::~MainWindow() {
+    for (Plugin* plugin : m_plugins)
+        delete plugin;
+
     for (const std::pair<const int, Document*>& pair : documents) {
         Document* document = pair.second;
         delete document;
@@ -306,407 +347,9 @@ void MainWindow::prepareUi() {
     QMenu* viewMenu = menuTitleBar->addMenu(tr("&View"));
 
     // vv
-    QMenu *vvMenu = menuTitleBar->addMenu(tr("&Verification && Validation"));
+    m_vvPlugin->CreateMenu(menuTitleBar);
 
-    QAction *runVVAct = new QAction(tr("Run Validation"), this);
-
-    connect(runVVAct,
-            &QAction::triggered,
-            this,
-            &MainWindow::startVVValidation);
-    vvMenu->addAction(runVVAct);
-
-    QAction *createTestAct = new QAction(tr("Create new test"), this);
-
-    connect(createTestAct,
-            &QAction::triggered,
-            this,
-            [this]()
-            {
-                bool ok;
-
-                QString testName =
-                    QInputDialog::getText(
-                        this,
-                        "Create VV Test",
-                        "Test name:",
-                        QLineEdit::Normal,
-                        "",
-                        &ok);
-
-                if (!ok || testName.isEmpty())
-                    return;
-
-                vvTests.append(testName);
-
-                vvWidget->addIssue(
-                    "INFO",
-                    "Created VV test: " + testName);
-
-                vvWidget->appendConsoleMessage(
-                    "VV test added: " + testName);
-            });
-
-    vvMenu->addAction(createTestAct);
-
-    QAction *removeTestAct =
-        new QAction(
-            tr("Remove test"),
-            this);
-
-    connect(removeTestAct,
-            &QAction::triggered,
-            this,
-            [this]()
-            {
-                if (vvTests.isEmpty())
-                {
-                    vvWidget->addIssue(
-                        "WARNING",
-                        "No VV tests available");
-
-                    return;
-                }
-
-                bool ok;
-
-                QString selectedTest =
-                    QInputDialog::getItem(
-                        this,
-                        "Remove VV Test",
-                        "Select test:",
-                        vvTests,
-                        0,
-                        false,
-                        &ok);
-
-                if (!ok || selectedTest.isEmpty())
-                    return;
-
-                vvTests.removeAll(selectedTest);
-
-                vvWidget->addIssue(
-                    "INFO",
-                    "Removed VV test: " + selectedTest);
-
-                vvWidget->appendConsoleMessage(
-                    "VV test removed: " + selectedTest);
-            });
-
-    vvMenu->addAction(removeTestAct);
-
-    QAction *createSuiteAct = new QAction(tr("Create test suite"), this);
-
-    connect(createSuiteAct,
-            &QAction::triggered,
-            this,
-            [this]()
-            {
-                if (vvTests.isEmpty())
-                {
-                    vvWidget->addIssue(
-                        "WARNING",
-                        "No VV tests available");
-
-                    return;
-                }
-
-                bool ok;
-
-                QString suiteName =
-                    QInputDialog::getText(
-                        this,
-                        "Create VV Suite",
-                        "Suite name:",
-                        QLineEdit::Normal,
-                        "",
-                        &ok);
-
-                if (!ok || suiteName.isEmpty())
-                    return;
-
-                vvSuites[suiteName] = vvTests;
-
-                vvWidget->addIssue(
-                    "INFO",
-                    "Created VV suite: " + suiteName);
-
-                vvWidget->appendConsoleMessage(
-                    "VV suite created: " + suiteName);
-            });
-
-    vvMenu->addAction(createSuiteAct);
-
-    QAction *removeSuiteAct = new QAction(tr("Remove test suite"), this);
-
-    connect(removeSuiteAct,
-            &QAction::triggered,
-            this,
-            [this]()
-            {
-                if (vvSuites.isEmpty())
-                {
-                    vvWidget->addIssue(
-                        "WARNING",
-                        "No VV suites available");
-
-                    return;
-                }
-
-                bool ok;
-
-                QStringList suiteNames =
-                    vvSuites.keys();
-
-                QString selectedSuite =
-                    QInputDialog::getItem(
-                        this,
-                        "Remove VV Suite",
-                        "Select suite:",
-                        suiteNames,
-                        0,
-                        false,
-                        &ok);
-
-                if (!ok || selectedSuite.isEmpty())
-                    return;
-
-                vvSuites.remove(selectedSuite);
-
-                vvWidget->addIssue(
-                    "INFO",
-                    "Removed VV suite: " + selectedSuite);
-
-                vvWidget->appendConsoleMessage(
-                    "VV suite removed: " + selectedSuite);
-            });
-
-    vvMenu->addAction(removeSuiteAct);
-
-    QMenu *exportMenu = new QMenu("Export", this);
-    QAction *exportTXTAct = new QAction("TXT", this);
-    QAction *exportJSONAct = new QAction("JSON", this);
-    QAction *exportCSVAct = new QAction("CSV", this);
-
-    exportMenu->addAction(exportTXTAct);
-    exportMenu->addAction(exportJSONAct);
-    exportMenu->addAction(exportCSVAct);
-
-    vvMenu->addMenu(exportMenu);
-    // csv export
-    connect(exportCSVAct,
-            &QAction::triggered,
-            this,
-            [this]()
-            {
-                QString fileName =
-                    QFileDialog::getSaveFileName(
-                        this,
-                        "Export VV Report",
-                        "",
-                        "CSV Files (*.csv)");
-
-                if (fileName.isEmpty())
-                    return;
-
-                QFile file(fileName);
-
-                if (!file.open(
-                        QIODevice::WriteOnly | QIODevice::Text))
-                {
-                    vvWidget->addIssue(
-                        "ERROR",
-                        "Failed to export CSV");
-
-                    return;
-                }
-
-                QTextStream out(&file);
-
-                out << "Severity,Issue\n";
-
-                for (int i = 0;
-                     i < vvWidget->getIssueTree()
-                             ->topLevelItemCount();
-                     i++)
-                {
-                    QTreeWidgetItem *item = vvWidget->getIssueTree()->topLevelItem(i);
-
-                    QString severity = item->text(0);
-                    QString testName = item->text(1);
-                    QString description = item->text(2);
-                    QString objectName = item->text(3);
-                    QString fullPath = item->text(4);
-
-                    out << severity << ","
-                        << testName << ","
-                        << description << ","
-                        << objectName << ","
-                        << fullPath << "\n";
-                }
-                file.close();
-
-                vvWidget->appendConsoleMessage("CSV report exported: " + fileName);
-
-                vvWidget->addIssue(
-                    "INFO",
-                    "CSV report exported");
-            });
-
-    // txt export
-    connect(exportTXTAct,
-            &QAction::triggered,
-            this,
-            [this]()
-            {
-                QString fileName =
-                    QFileDialog::getSaveFileName(
-                        this,
-                        "Export TXT Report",
-                        "",
-                        "Text Files (*.txt)");
-
-                if (fileName.isEmpty())
-                    return;
-
-                QFile file(fileName);
-
-                if (!file.open(
-                        QIODevice::WriteOnly | QIODevice::Text))
-                {
-                    vvWidget->addIssue(
-                        "ERROR",
-                        "Failed to export TXT");
-
-                    return;
-                }
-
-                QTextStream out(&file);
-
-                out << "Verification & Validation Report\n";
-                out << "================================\n\n";
-
-                for (int i = 0;
-                     i < vvWidget->getIssueTree()
-                             ->topLevelItemCount();
-                     i++)
-                {
-                    QTreeWidgetItem *item =
-                        vvWidget->getIssueTree()
-                            ->topLevelItem(i);
-
-                    out << "Severity: "
-                        << item->text(0) << "\n";
-
-                    out << "Test Name: "
-                        << item->text(1) << "\n";
-
-                    out << "Description: "
-                        << item->text(2) << "\n";
-
-                    out << "Object: "
-                        << item->text(3) << "\n";
-
-                    out << "Full Path: "
-                        << item->text(4) << "\n";
-
-                    out << "--------------------------------\n";
-                }
-
-                file.close();
-
-                vvWidget->appendConsoleMessage(
-                    "TXT report exported: " + fileName);
-
-                vvWidget->addIssue(
-                    "INFO",
-                    "TXT report exported");
-            });
-
-    // json export
-    connect(exportJSONAct,
-            &QAction::triggered,
-            this,
-            [this]()
-            {
-                QString fileName =
-                    QFileDialog::getSaveFileName(
-                        this,
-                        "Export JSON Report",
-                        "",
-                        "JSON Files (*.json)");
-
-                if (fileName.isEmpty())
-                    return;
-
-                QFile file(fileName);
-
-                if (!file.open(
-                        QIODevice::WriteOnly | QIODevice::Text))
-                {
-                    vvWidget->addIssue(
-                        "ERROR",
-                        "Failed to export JSON");
-
-                    return;
-                }
-
-                QTextStream out(&file);
-
-                out << "{\n";
-                out << " \"validation_results\": [\n";
-
-                for (int i = 0;
-                     i < vvWidget->getIssueTree()
-                             ->topLevelItemCount();
-                     i++)
-                {
-                    QTreeWidgetItem *item = vvWidget->getIssueTree()->topLevelItem(i);
-
-                    out << " {\n";
-
-                    out << " \"severity\": \""
-                        << item->text(0)
-                        << "\",\n";
-
-                    out << " \"test_name\": \""
-                        << item->text(1)
-                        << "\",\n";
-
-                    out << " \"description\": \""
-                        << item->text(2)
-                        << "\",\n";
-
-                    out << " \"issue_object\": \""
-                        << item->text(3)
-                        << "\",\n";
-
-                    out << " \"full_path\": \""
-                        << item->text(4)
-                        << "\"\n";
-
-                    out << " }";
-
-                    if (i != vvWidget->getIssueTree()
-                                     ->topLevelItemCount() -
-                                 1)
-                    {
-                        out << ",";
-                    }
-                    out << "\n";
-                }
-
-                out << " ]\n";
-                out << "}\n";
-
-                file.close();
-
-                vvWidget->appendConsoleMessage("JSON report exported: " + fileName);
-
-                vvWidget->addIssue(
-                    "INFO",
-                    "JSON report exported");
-            });
+    CreatePluginMenu();
 
     QAction* resetViewportAct = new QAction("Reset current viewport", this);
     resetViewportAct->setStatusTip(tr("Reset to default camera orientation for the viewport and autoview to currently visible objects"));
@@ -1014,34 +657,8 @@ void MainWindow::prepareUi() {
     documentArea->setCornerWidget(mainTabBarCornerWidget,Qt::Corner::TopRightCorner);
     mainTabBarCornerWidget->addWidget(toolbarSeparator(false));
     // vv
-    QAction *runVVToolbarAct = new QAction("Run V&V", this);
-
-    connect(runVVToolbarAct,
-            &QAction::triggered,
-            this,
-            &MainWindow::startVVValidation);
-
-    QToolButton *runVVButton = new QToolButton(menuTitleBar);
-
-    runVVButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    runVVButton->setDefaultAction(runVVToolbarAct);
-    runVVButton->setObjectName("toolbarButton");
-
-    mainTabBarCornerWidget->addWidget(runVVButton);
-
-    QAction *stopVVAct = new QAction("Stop", this);
-
-    connect(stopVVAct,
-            &QAction::triggered,
-            this,
-            &MainWindow::stopVVValidation);
-
-    QToolButton *stopVVButton = new QToolButton(menuTitleBar);
-
-    stopVVButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    stopVVButton->setDefaultAction(stopVVAct);
-    stopVVButton->setObjectName("toolbarButton");
-    mainTabBarCornerWidget->addWidget(stopVVButton);
+    for (QWidget* button : m_vvPlugin->CreateToolbarButtons(menuTitleBar))
+        mainTabBarCornerWidget->addWidget(button);
 
     documentArea->setCornerWidget(mainTabBarCornerWidget, Qt::Corner::TopRightCorner);
 }
@@ -1131,106 +748,7 @@ void MainWindow::prepareDockables(){
     // added new vv
     vvDockable = new Dockable("V&V", this, true, 300);
 
-    vvWidget = new VVWidget(this);
-    connect(vvWidget,
-            &VVWidget::geometrySelected,
-            this,
-            [this](const QString &name)
-            {
-                if (activeDocumentId == -1)
-                    return;
-
-                auto objectTree =
-                    documents[activeDocumentId]
-                        ->getObjectTreeWidget();
-
-                for (int i = 0;
-                     i < objectTree->topLevelItemCount();
-                     i++)
-                {
-                    auto item =
-                        objectTree->topLevelItem(i);
-
-                    if (!item)
-                        continue;
-
-                    if (item->text(0) == name)
-                    {
-                        objectTree->setCurrentItem(item);
-
-                        size_t objectId =
-                            item->data(0, Qt::UserRole).toInt();
-
-                        documents[activeDocumentId]
-                            ->getViewport()
-                            ->getCamera()
-                            ->centerView(objectId);
-
-                        documents[activeDocumentId]
-                            ->getViewport()
-                            ->forceRerenderFrame();
-
-                        statusBar->showMessage(
-                            "Selected geometry: " + name);
-
-                        break;
-                    }
-                }
-            });
-
-    connect(vvWidget,
-            &VVWidget::issueDoubleClicked,
-            this,
-            [this](QString issueText)
-            {
-                VVIssueDialog *dialog =
-                    new VVIssueDialog(
-                        issueText,
-                        this);
-
-                dialog->exec();
-
-                if (activeDocumentId == -1)
-                    return;
-
-                auto objectTree =
-                    documents[activeDocumentId]
-                        ->getObjectTreeWidget();
-
-                for (int i = 0;
-                     i < objectTree->topLevelItemCount();
-                     i++)
-                {
-                    auto item =
-                        objectTree->topLevelItem(i);
-
-                    if (!item)
-                        continue;
-
-                    QString objectName =
-                        item->text(0);
-
-                    if (issueText.contains(objectName))
-                    {
-                        objectTree->setCurrentItem(item);
-
-                        size_t objectId =
-                            item->data(
-                                    0,
-                                    Qt::UserRole)
-                                .toInt();
-
-                        documents[activeDocumentId]
-                            ->getViewport()
-                            ->getCamera()
-                            ->centerView(objectId);
-
-                        break;
-                    }
-                }
-            });
-
-    vvDockable->setContent(vvWidget);
+    vvDockable->setContent(m_vvPlugin->CreatePanel());
 
     addDockWidget(Qt::BottomDockWidgetArea, vvDockable);
 }
@@ -1438,19 +956,7 @@ void MainWindow::tabCloseRequested(const int i)
     if (documentId != -1) {
         delete documents[documentId];
         documents.erase(documentId);
-        if (vvWidget)
-        {
-            vvWidget->clearIssues();
-
-            vvValidationQueue.clear();
-            vvCurrentIndex = 0;
-            vvRunning = false;
-
-            vvTimer->stop();
-
-            vvWidget->setValidationStatus("Validation idle");
-            vvWidget->updateSummary(0, 0, 0);
-        }
+        m_vvPlugin->Reset();
     }
     if (documentArea->currentIndex() == -1){
         objectTreeWidgetDockable->clear();
@@ -1531,154 +1037,6 @@ Document* MainWindow::getActiveDocument() {
     else
         return nullptr;
 }
-// vv
-void MainWindow::startVVValidation()
-{
-    VVTestSelectionDialog dialog(this);
-    if (dialog.exec() != QDialog::Accepted)
-    {
-        return;
-    }
-
-    vvTests = dialog.getSelectedTests();
-    if (vvTests.isEmpty())
-    {
-        vvWidget->appendConsoleMessage("[WARNING] No validation tests selected.");
-        vvWidget->addIssue("WARNING", "No validation tests selected");
-        return;
-    }
-
-    vvWidget->appendConsoleMessage("[INFO] Selected Tests:");
-    for (const QString &test : vvTests)
-    {
-        vvWidget->appendConsoleMessage(" - " + test);
-    }
-
-    if (!vvWidget)
-        return;
-
-    vvWidget->clearIssues();
-    vvValidationQueue.clear();
-    vvCurrentIndex = 0;
-
-    if (activeDocumentId == -1 || documents.find(activeDocumentId) == documents.end())
-    {
-        vvWidget->addIssue("ERROR", "No geometry loaded");
-        return;
-    }
-
-    auto objectTree = documents[activeDocumentId]->getObjectTreeWidget();
-    for (int i = 0; i < objectTree->topLevelItemCount(); i++)
-    {
-        collectPathsRecursive(objectTree->topLevelItem(i));
-    }
-    vvRunning = true;
-    vvWidget->setValidationStatus("VALIDATION RUNNING");
-    vvTimer->start(1000);
-}
-
-void MainWindow::processVVValidation()
-{
-    static int passCount = 0;
-    static int warningCount = 0;
-    static int errorCount = 0;
-
-    if (vvCurrentIndex == 0)
-    {
-        passCount = 0;
-        warningCount = 0;
-        errorCount = 0;
-        vvWidget->appendConsoleMessage("[INFO] Starting validation...");
-    }
-
-    if (!vvRunning)
-        return;
-
-    if (vvCurrentIndex < vvValidationQueue.size())
-    {
-        QString fullPath = vvValidationQueue[vvCurrentIndex];
-        QString objectName = fullPath.section('/', -1);
-
-        if (fullPath.isEmpty())
-        {
-            vvWidget->addIssue("ERROR", "Name Empty");
-            errorCount++;
-            vvCurrentIndex++;
-            return;
-        }
-        if (fullPath.contains("_GLOBAL", Qt::CaseInsensitive))
-        {
-            vvCurrentIndex++;
-            processVVValidation();
-            return;
-        }
-        if (objectName.toLower().contains("temp"))
-        {
-            vvWidget->addIssue("WARNING", "Temp Geometry found", "N/A", objectName, fullPath);
-            warningCount++;
-        }
-
-        Document *activeDoc = getActiveDocument();
-        if (activeDoc && activeDoc->getDatabase())
-        {
-            BRLCAD::Database *db = activeDoc->getDatabase();
-            if (!db)
-            {
-                vvWidget->appendConsoleMessage("[ERROR] Database unavailable.");
-                vvCurrentIndex++;
-                return;
-            }
-
-            vvWidget->appendConsoleMessage("[CHECKING] " + fullPath);
-
-            for (const QString &testName : vvTests)
-            {
-                QString mooseResult = VVBackendTests::runMooseTest(*db, testName, fullPath);
-
-                if (mooseResult == "SKIP")
-                {
-                    vvWidget->appendConsoleMessage("[SKIP] " + testName);
-                }
-                else if (mooseResult == "No issues found (PASSED)")
-                {
-                    passCount++;
-                    vvWidget->addIssue("PASSED", testName, "No issues found", objectName, fullPath);
-                    vvWidget->appendConsoleMessage("[PASSED] " + testName);
-                }
-                else
-                {
-                    errorCount++;
-                    vvWidget->addIssue("ERROR", testName, mooseResult, objectName, fullPath);
-                    vvWidget->appendConsoleMessage("[ERROR] " + testName + ": " + mooseResult);
-                }
-                QCoreApplication::processEvents();
-            }
-        }
-        vvWidget->appendConsoleMessage("Checked object: " + fullPath);
-        vvCurrentIndex++;
-    }
-
-    if (vvCurrentIndex >= vvValidationQueue.size())
-    {
-        vvTimer->stop();
-        vvRunning = false;
-        vvWidget->updateSummary(errorCount, warningCount, passCount);
-        vvWidget->setValidationStatus("VALIDATION COMPLETE");
-        vvWidget->appendConsoleMessage("[INFO] Validation Completed Successfully.");
-    }
-}
-
-void MainWindow::stopVVValidation()
-{
-    vvTimer->stop();
-    vvRunning = false;
-
-    vvWidget->addIssue(
-        "INFO",
-        "Validation stopped");
-
-    vvWidget->setValidationStatus("VALIDATION STOPPED");
-}
 
 QString MainWindow::getFullPathFromItem(QTreeWidgetItem *item)
 {
@@ -1696,16 +1054,107 @@ QString MainWindow::getFullPathFromItem(QTreeWidgetItem *item)
     return "/" + path;
 }
 
-void MainWindow::collectPathsRecursive(QTreeWidgetItem *item)
+QStringList MainWindow::getTopObjectPaths()
 {
-    if (!item)
-        return;
-    if (item->parent() == nullptr)
+    QStringList paths;
+
+    if (activeDocumentId == -1 || documents.find(activeDocumentId) == documents.end())
+        return paths;
+
+    auto objectTree = documents[activeDocumentId]->getObjectTreeWidget();
+    for (int i = 0; i < objectTree->topLevelItemCount(); i++)
     {
-        QString path = getFullPathFromItem(item);
-        if (!vvValidationQueue.contains(path))
+        QTreeWidgetItem *item = objectTree->topLevelItem(i);
+
+        if (item && item->parent() == nullptr)
         {
-            vvValidationQueue.append(path);
+            QString path = getFullPathFromItem(item);
+            if (!paths.contains(path))
+            {
+                paths.append(path);
+            }
+        }
+    }
+    return paths;
+}
+
+void MainWindow::CreatePluginMenu(void) {
+    QMenu* pluginMenu = menuTitleBar->addMenu(tr("Plugins"));
+    bool   enableMenu = false;
+
+    for (size_t counter = 0; counter < m_plugins.size(); ++counter) {
+        Plugin* plugin = m_plugins[counter];
+
+        if (plugin != nullptr) {
+            QAction*    action      = new QAction(plugin->Name(), pluginMenu);
+            QStringList data;
+            QString     description = plugin->Description();
+
+            data << QString::number(counter);
+
+            action->setToolTip(description);
+            action->setStatusTip(description);
+            action->setData(data);
+
+            pluginMenu->addAction(action);
+
+            enableMenu = true;
+        }
+    }
+
+    connect(pluginMenu, &QMenu::triggered,
+            this,       &MainWindow::PerformPluginAction);
+
+    pluginMenu->setEnabled(enableMenu);
+}
+
+class PluginAppData : public Plugin::AppData {
+public:
+    PluginAppData(QWidget*          parent,
+                  BRLCAD::Database& database) : Plugin::AppData(), m_parent(parent), m_database(database) {}
+
+    ~PluginAppData(void) override {}
+
+    QWidget*          ParentWidget(void) override {
+        return m_parent;
+    }
+
+    BRLCAD::Database& Db(void) override {
+        return m_database;
+    }
+
+private:
+    QWidget*          m_parent;
+    BRLCAD::Database& m_database;
+};
+
+void MainWindow::PerformPluginAction
+(
+    QAction* action
+) {
+    if (action != nullptr) {
+        QStringList actionData = action->data().toStringList();
+
+        if (actionData.size() == 1) {
+            size_t index = actionData[0].toUInt();
+
+            if (index < m_plugins.size()) {
+                Plugin* plugin = m_plugins[index];
+
+                if (plugin != nullptr) {
+                    Document* document = getActiveDocument();
+
+                    // a plugin works on the database of the active document
+                    if (document == nullptr) {
+                        QMessageBox::information(this, tr("Plugins"), tr("Please open or create a database first."));
+                    }
+                    else {
+                        PluginAppData appData(this, *document->getDatabase());
+
+                        plugin->Handle(appData);
+                    }
+                }
+            }
         }
     }
 }
